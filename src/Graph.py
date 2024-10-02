@@ -8,14 +8,16 @@ class Graph:
         self.edges = edges
 
     def draw(self):
-        coords = [v.get_position()+[v.get_color()] for v in self.vertices]
 
-        x_coords = [p[0] for p in coords]
-        y_coords = [p[1] for p in coords]
-        colors = [p[2] for p in coords]
+        for v in self.vertices:
+            v.draw()
 
-        plt.scatter(x_coords, y_coords, c=colors)
+        for e in self.edges:
+            e.draw()
+
         plt.title('Graph Vertices')
         plt.xlabel('X Coordinate')
         plt.ylabel('Y Coordinate')
+
+    def show(self):
         plt.show()
