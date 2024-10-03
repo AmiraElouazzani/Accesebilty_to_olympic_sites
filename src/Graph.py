@@ -13,21 +13,14 @@ class Graph:
         self.edges = edges
         self.cached_edges = []
 
-    def isStation(self,vertex): 
-        isinstance(vertex, Station)
-
-    def isOlympic(self,vertex):
-        isinstance(vertex, Olympic)
-
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on distance."""
         self.cached_edges = []  # Clear previous edges
 
         # Use tqdm to show progress
-
         for i, v1 in tqdm(enumerate(self.vertices), total=len(self.vertices), desc="Calculating edges"):
             for j, v2 in enumerate(self.vertices):
-                if i != j and (self.isOlympic(v1) == self.isStation(v2))  :
+                if i != j and (isinstance(v1, Station) == isinstance(v2, Olympic)) :
                     distance = geodesic(
                         (v1.geopoint.latitude, v1.geopoint.longitude),
                         (v2.geopoint.latitude, v2.geopoint.longitude)
@@ -44,11 +37,11 @@ class Graph:
         station_to_olympic = False
 
         for edge in self.cached_edges:
-            if self.isStation(edge.vertex1) and self.isOlympic(edge.vertex2):
+            if isinstance(edge.vertex1, Station) and isinstance(edge.vertex2, Olympic):
                 print(f"Station {edge.vertex1.name} is linked to Olympic site {edge.vertex2.name} with distance {edge.weight}")
                 station_to_olympic = True
                 break
-            elif self.isOlympic(edge.vertex1) and self.isStation(edge.vertex2):
+            elif isinstance(edge.vertex1, Olympic) and isinstance(edge.vertex2, Station):
                 print(f"Olympic site {edge.vertex1.name} is linked to Station {edge.vertex2.name} with distance {edge.weight}")
                 station_to_olympic = True
                 break
