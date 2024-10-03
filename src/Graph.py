@@ -12,6 +12,7 @@ class Graph:
         self.vertices = vertices
         self.edges = edges
         self.cached_edges = []
+        self.json_edges = {}
 
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on distance."""
@@ -21,10 +22,14 @@ class Graph:
         for i, v1 in tqdm(enumerate(self.vertices), total=len(self.vertices), desc="Calculating edges"):
             for j, v2 in enumerate(self.vertices):
                 if i != j and (isinstance(v1, Station) == isinstance(v2, Olympic)) :
-                    distance = geodesic(
-                        (v1.geopoint.latitude, v1.geopoint.longitude),
-                        (v2.geopoint.latitude, v2.geopoint.longitude)
-                    ).meters
+                    ## check if already exist before calculate
+                    d = self.checkIfEdgeExist(v1, v2)
+                    if d != False:
+                        distance = geodesic(
+                            (v1.geopoint.latitude, v1.geopoint.longitude),
+                            (v2.geopoint.latitude, v2.geopoint.longitude)
+                        ).meters
+
                     if distance <= distance_threshold:
                         edge = Edge(v1, v2, distance)
                         self.cached_edges.append(edge)
@@ -93,3 +98,27 @@ class Graph:
     def set_distance_threshold(self, distance_threshold: float):
         """Set distance threshold and calculate edges based on it."""
         self.calculate_edges(distance_threshold)
+
+    def checkIfEdgeExist(self, v1, v2):
+        ## check if json_edges is empty
+        if self.json_edges == []:
+            with open('data/edges.json', 'r') as file:
+                json_edges = json.load(file)
+
+        for edge in enumerate(json_edges['edges']):
+            ## /!\ Warning : Check if v1 & v2 can be reversed in points loading
+            if(
+                v1.geopoint.latitude == edge.v1.latitude and v1.geopoint.longitude == edge.v1.longitude
+                and
+                v2.geopoint.latitude == edge.v2.latitude and v2.geopoint.longitude == edge.v2.longitude
+            ):
+                return edge.distance
+            else: 
+                return False
+
+    def addEdgeToJSON(self, edge):
+        ## redefine dict function of edge to be parsed correctly
+        json.dump(edge.__dict__)
+        ## Add edge to edges variable or add directly to file ? -> Check for better solution
+        with open("sample.json", "w") as outfile:
+            outfile.write(json)

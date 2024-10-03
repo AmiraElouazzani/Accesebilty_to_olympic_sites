@@ -1,0 +1,15 @@
+{
+    "edges": [
+        {
+            "v1": {
+                "latitude": 1,
+                "longitude": 1
+            },
+            "v2": {
+                "latitude": 1,
+                "longitude": 1
+            },
+            "distance": 5
+        }
+    ]
+}
