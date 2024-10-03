@@ -10,4 +10,5 @@ V = S + O
 E = []
 
 G = Graph.Graph(V, E, name="test_graph")
+G.set_distance_threshold(1000)
 G.draw()
