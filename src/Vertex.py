@@ -13,3 +13,6 @@ class Vertex:
     def draw(self):
         x,y = self.get_position()
         plt.scatter(x,y,c=self.get_color())
+
+
+
