@@ -54,7 +54,7 @@ class Graph:
         # Use tqdm to show progress
         for i, v1 in tqdm(enumerate(self.vertices), total=len(self.vertices), desc="Calculating edges"):
             for j, v2 in enumerate(self.vertices):
-                if i != j:
+                if i != j and (isinstance(v1, Station) == isinstance(v2, Olympic)) :
                     distance = geodesic(
                         (v1.geopoint.latitude, v1.geopoint.longitude),
                         (v2.geopoint.latitude, v2.geopoint.longitude)

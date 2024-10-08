@@ -1,6 +1,7 @@
 from .Geopoint import Geopoint
 from .Vertex import Vertex
 
+
 class Site(Vertex):
     def __init__(self, geopoint : 'Geopoint', name, color) -> None:
         super().__init__(color)
@@ -12,3 +13,5 @@ class Site(Vertex):
 
     def __str__(self):
         return f"Site: {self.name}, {self.geopoint}"
+
+
