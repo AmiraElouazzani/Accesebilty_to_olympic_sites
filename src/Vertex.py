@@ -1,7 +1,5 @@
-import matplotlib.pyplot as plt
-
 class Vertex:
-    def __init__(self, color) -> None:
+    def __init__(self, color="gray") -> None:
         self.color = color
 
     def get_position(self):
@@ -9,7 +7,3 @@ class Vertex:
 
     def get_color(self):
         return self.color
-    
-    def draw(self):
-        x,y = self.get_position()
-        plt.scatter(x,y,c=self.get_color())

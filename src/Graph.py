@@ -10,9 +10,43 @@ from shapely.geometry import LineString
 class Graph:
     def __init__(self, vertices: list[Vertex], edges: list[Edge] = [], name="default_name"):
         self.vertices = vertices
+        self.olympics = self.getOlympics()
+        self.stations = self.getStations()
         self.edges = edges
         self.cached_edges = []
 
+    #a set is Solution of Accessibility if it dominates the subgraph of Olympic sites
+    #this function checks the vincinity of a potential solution A
+    #if all olympic sites are in the vincinity of A, then A is a solution of Accessibility
+    def isSolutionOfAccessibility(self, A):
+        visited = set()
+        for a in A:
+            visited = visited.union(self.get_neigbors(a))
+        return (set(self.olympics).issubset(visited))
+
+    def get_neigbors(self, v : Vertex):
+        neighbors = set()
+        for e in self.edges:
+            if e.vertex1 == v:
+                neighbors.add(e.vertex2)
+            if e.vertex2 == v:
+                neighbors.add(e.vertex1)
+        return neighbors
+
+    def getStations(self):
+        stations=[]
+        for v in self.vertices:
+            if isinstance(v, Station):
+                stations.append(v)
+        return stations
+
+    def getOlympics(self):
+        olympics=[]
+        for v in self.vertices:
+            if isinstance(v, Olympic):
+                olympics.append(v)
+        return olympics
+    
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on distance."""
         self.cached_edges = []  # Clear previous edges
@@ -28,6 +62,7 @@ class Graph:
                     if distance <= distance_threshold:
                         edge = Edge(v1, v2, distance)
                         self.cached_edges.append(edge)
+                        self.edges.append(edge)
 
         # Verification step
         self.verify_station_olympic_link()
@@ -93,3 +128,32 @@ class Graph:
     def set_distance_threshold(self, distance_threshold: float):
         """Set distance threshold and calculate edges based on it."""
         self.calculate_edges(distance_threshold)
+
+
+#
+# A few instructions to test the Graph class (obsolete, to remove)
+#
+
+# # Create a few vertices
+
+# V = [Vertex() for i in range(6)]
+# e1 = Edge(V[0], V[1])
+# e2 = Edge(V[1], V[2])
+# e3 = Edge(V[2], V[3])
+# e4 = Edge(V[2], V[4])
+# e5 = Edge(V[4], V[5])
+# e6 = Edge(V[5], V[0])
+# e7 = Edge(V[1], V[5])
+
+# E = [e1, e2, e3, e4, e5, e6, e7]
+
+# G = Graph(V, E)
+
+# assert(G.isDominantSet({V[0], V[3], V[4]}))
+# assert(G.isDominantSet({V[2], V[5]}))
+# assert(G.isDominantSet({V[1], V[2]}))
+
+# assert(not G.isDominantSet({V[0], V[4]}))
+# assert(not G.isDominantSet({V[1], V[3]}))
+
+# print("All tests passed!")
