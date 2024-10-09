@@ -2,10 +2,10 @@ from .Edge import Edge
 from .Vertex import Vertex
 from .Station import Station
 from .Olympic import Olympic
-from geopy.distance import geodesic
 from tqdm import tqdm
 import folium
-from shapely.geometry import LineString
+import osmnx as ox
+import networkx as nx
 
 class Graph:
     def __init__(self, vertices: list[Vertex], edges: list[Edge] = [], name="default_name"):
@@ -21,10 +21,10 @@ class Graph:
     def isSolutionOfAccessibility(self, A):
         visited = set()
         for a in A:
-            visited = visited.union(self.get_neigbors(a))
+            visited = visited.union(self.get_neighbors(a))
         return (set(self.olympics).issubset(visited))
 
-    def get_neigbors(self, v : Vertex):
+    def get_neighbors(self, v : Vertex):
         neighbors = set()
         for e in self.edges:
             if e.vertex1 == v:
@@ -48,24 +48,44 @@ class Graph:
         return olympics
     
     def calculate_edges(self, distance_threshold: float):
-        """Calculate and cache edges between vertices based on distance."""
-        self.cached_edges = []  # Clear previous edges
+        """Calculate and cache edges between vertices based on walking paths."""
+        self.cached_edges = []  
+        existing_edges = set()  # Set to store edges to prevent duplicates
 
-        # Use tqdm to show progress
+        # Get the road network (walking) for the area
+        # This uses the coordinates of the vertices to get the network for the area
+        graph_center = (
+            sum(v.geopoint.latitude for v in self.vertices) / len(self.vertices),
+            sum(v.geopoint.longitude for v in self.vertices) / len(self.vertices)
+        )
+        
+        # Retrieve a walking network from OpenStreetMap for the area around the center point
+        G = ox.graph_from_point(graph_center, dist=distance_threshold, network_type='walk')
+
+        # tqdm for progress bar
         for i, v1 in tqdm(enumerate(self.vertices), total=len(self.vertices), desc="Calculating edges"):
             for j, v2 in enumerate(self.vertices):
-                if i != j and (isinstance(v1, Station) == isinstance(v2, Olympic)) :
-                    distance = geodesic(
-                        (v1.geopoint.latitude, v1.geopoint.longitude),
-                        (v2.geopoint.latitude, v2.geopoint.longitude)
-                    ).meters
-                    if distance <= distance_threshold:
-                        edge = Edge(v1, v2, distance)
-                        self.cached_edges.append(edge)
-                        self.edges.append(edge)
+                if i != j and not (isinstance(v1, Olympic) and isinstance(v2, Olympic)): 
+                        # Find the nearest nodes in the OSM network for each vertex
+                        try:
+                            origin_node = ox.distance.nearest_nodes(G, v1.geopoint.longitude, v1.geopoint.latitude)
+                            destination_node = ox.distance.nearest_nodes(G, v2.geopoint.longitude, v2.geopoint.latitude)
 
-        # Verification step
-        self.verify_station_olympic_link()
+                            walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
+
+                            if walking_distance <= distance_threshold:
+                                walking_time = Edge.walking_time_from_distance(walking_distance)
+                                edge_pair = (v1, v2)
+                                reverse_edge_pair = (v2, v1)
+                                if edge_pair not in existing_edges and reverse_edge_pair not in existing_edges: # Check if the edge or its reverse already exists
+                                    # Create the edge with walking time as the weight
+                                    edge = Edge(v1, v2, walking_time)
+                                    self.cached_edges.append(edge)
+                                    self.edges.append(edge)
+                                    existing_edges.add(edge_pair)  
+                        except Exception as e:
+                            print(f"Error calculating path between {v1.name} and {v2.name}: {e}")
+
 
     def verify_station_olympic_link(self):
         """Check that at least one station is linked to an Olympic site."""
@@ -85,7 +105,7 @@ class Graph:
             print("No stations are linked to Olympic sites. Please check the distance threshold or data.")
 
     def draw(self):
-        """Draw the graph using Folium instead of Matplotlib."""
+        """Draw the graph using Folium instead of Matplotlib, showing walking time (weight) on edges."""
         if not self.vertices:
             print("No vertices to draw.")
             return
@@ -107,23 +127,19 @@ class Graph:
                 icon=folium.Icon(color=color)
             ).add_to(folium_map)
 
-        # Plot edges as lines
+        # Plot edges as lines with walking time
         for edge in tqdm(self.cached_edges, desc="Drawing edges"):
-            line = LineString([
-                (edge.vertex1.geopoint.longitude, edge.vertex1.geopoint.latitude),
-                (edge.vertex2.geopoint.longitude, edge.vertex2.geopoint.latitude)
-            ])
             folium.PolyLine(
                 locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
-                           (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
+                        (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
                 color="black",
                 weight=2,
-                opacity=1
+                opacity=1,
+                tooltip=f"Walking time: {round(edge.weight, 2)} minutes"  # Display walking time as tooltip
             ).add_to(folium_map)
 
-        # Save or display the folium map
-        folium_map.save("map.html")  # This will save the map to an HTML file
-        folium_map  # Display in Jupyter Notebook (if you use one)
+        folium_map.save("map.html")  
+        return folium_map 
 
     def set_distance_threshold(self, distance_threshold: float):
         """Set distance threshold and calculate edges based on it."""
