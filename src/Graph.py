@@ -2,40 +2,71 @@ from .Edge import Edge
 from .Vertex import Vertex
 from .Station import Station
 from .Olympic import Olympic
-from geopy.distance import geodesic
+from geopy import distance as geopy
 from tqdm import tqdm
 import folium
 from shapely.geometry import LineString
+import json
 
 class Graph:
     def __init__(self, vertices: list[Vertex], edges: list[Edge] = [], name="default_name"):
         self.vertices = vertices
         self.edges = edges
         self.cached_edges = []
-        self.json_edges = {}
+        self.json_edges = []
+        self.edges_unsaved = []
 
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on distance."""
         self.cached_edges = []  # Clear previous edges
 
         # Use tqdm to show progress
+        count = 0
         for i, v1 in tqdm(enumerate(self.vertices), total=len(self.vertices), desc="Calculating edges"):
             for j, v2 in enumerate(self.vertices):
                 if i != j and (isinstance(v1, Station) == isinstance(v2, Olympic)) :
                     ## check if already exist before calculate
-                    d = self.checkIfEdgeExist(v1, v2)
-                    if d != False:
-                        distance = geodesic(
+                    # d = self.checkIfEdgeExist(v1, v2)
+                    if True:
+                        count += 1
+                        distance = geopy.great_circle(
                             (v1.geopoint.latitude, v1.geopoint.longitude),
                             (v2.geopoint.latitude, v2.geopoint.longitude)
                         ).meters
-
-                    if distance <= distance_threshold:
-                        edge = Edge(v1, v2, distance)
-                        self.cached_edges.append(edge)
+                        distance = geopy.distance(
+                            (v1.geopoint.latitude, v1.geopoint.longitude),
+                            (v2.geopoint.latitude, v2.geopoint.longitude)
+                        ).meters
+                        print(f"Distance between {v1.name} and {v2.name} is {distance - distance2} meters")
+                        if distance <= distance_threshold:
+                            self.append_edge(v1, v2, distance)
+                            # self.append_unsaved_edge(v1, v2, distance)
+                    # else:
+                    #     self.append_edge(v1, v2, d)
 
         # Verification step
         self.verify_station_olympic_link()
+        # self.addEdgeToJSON()
+
+    def append_edge(self, v1, v2, distance):
+        """Add an edge to the graph."""
+        edge = Edge(v1, v2, distance)
+        self.cached_edges.append(edge)
+    
+    def append_unsaved_edge(self, v1, v2, distance):
+        edge = Edge(v1, v2, distance)
+        edge_dict = {
+            "v1": {
+                "latitude": edge.vertex1.geopoint.latitude,
+                "longitude": edge.vertex1.geopoint.longitude
+            },
+            "v2": {
+                "latitude": edge.vertex2.geopoint.latitude,
+                "longitude": edge.vertex2.geopoint.longitude
+            },
+            "distance": edge.weight
+        }
+        self.edges_unsaved.append(edge_dict)
 
     def verify_station_olympic_link(self):
         """Check that at least one station is linked to an Olympic site."""
@@ -103,22 +134,25 @@ class Graph:
         ## check if json_edges is empty
         if self.json_edges == []:
             with open('data/edges.json', 'r') as file:
-                json_edges = json.load(file)
+                self.json_edges = json.load(file)
+                print(f"Loaded json_edges : {self.json_edges}")
 
-        for edge in enumerate(json_edges['edges']):
+        for edge in enumerate(self.json_edges):
             ## /!\ Warning : Check if v1 & v2 can be reversed in points loading
             if(
-                v1.geopoint.latitude == edge.v1.latitude and v1.geopoint.longitude == edge.v1.longitude
+                v1.geopoint.latitude == edge[1]['v1']['latitude'] and v1.geopoint.longitude == edge[1]['v1']['longitude']
                 and
-                v2.geopoint.latitude == edge.v2.latitude and v2.geopoint.longitude == edge.v2.longitude
+                v2.geopoint.latitude == edge[1]['v2']['latitude'] and v2.geopoint.longitude == edge[1]['v2']['longitude']
             ):
-                return edge.distance
-            else: 
-                return False
+                print(f"Edge already exist between {v1.name} and {v2.name} with distance {edge[1]['distance']}")
+                return edge[1]['distance']
+        return False
 
-    def addEdgeToJSON(self, edge):
-        ## redefine dict function of edge to be parsed correctly
-        json.dump(edge.__dict__)
-        ## Add edge to edges variable or add directly to file ? -> Check for better solution
-        with open("sample.json", "w") as outfile:
-            outfile.write(json)
+    def addEdgeToJSON(self):
+        # append edge_dict to json file data/edges.json in array []
+        with open('data/edges.json', 'r') as file:
+            data = json.load(file)
+            ## concatenate the two lists
+            data = data + self.edges_unsaved
+        with open('data/edges.json', 'w') as file:
+            json.dump(data, file, indent=4)
