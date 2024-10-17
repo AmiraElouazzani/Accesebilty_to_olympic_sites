@@ -23,6 +23,12 @@ class Graph:
         for a in A:
             visited = visited.union(self.get_neighbors(a))
         return (set(self.olympics).issubset(visited))
+    
+    def are_adjacent(self, v1 : Vertex, v2 : Vertex):
+        for e in self.edges:
+            if (e.vertex1 == v1 and e.vertex2 == v2) or (e.vertex1 == v2 and e.vertex2 == v1):
+                return True
+        return False
 
     def get_neighbors(self, v : Vertex):
         neighbors = set()
@@ -34,18 +40,20 @@ class Graph:
         return neighbors
 
     def getStations(self):
-        stations=[]
-        for v in self.vertices:
-            if isinstance(v, Station):
-                stations.append(v)
-        return stations
+        if(not hasattr(self, "stations")):
+            self.stations = []
+            for v in self.vertices:
+                if isinstance(v, Station):
+                    self.stations.append(v)
+        return self.stations
 
     def getOlympics(self):
-        olympics=[]
-        for v in self.vertices:
-            if isinstance(v, Olympic):
-                olympics.append(v)
-        return olympics
+        if(not hasattr(self, "olympics")):
+            self.olympics = []
+            for v in self.vertices:
+                if isinstance(v, Olympic):
+                    self.olympics.append(v)
+        return self.olympics
     
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on walking paths."""
@@ -144,32 +152,3 @@ class Graph:
     def set_distance_threshold(self, distance_threshold: float):
         """Set distance threshold and calculate edges based on it."""
         self.calculate_edges(distance_threshold)
-
-
-#
-# A few instructions to test the Graph class (obsolete, to remove)
-#
-
-# # Create a few vertices
-
-# V = [Vertex() for i in range(6)]
-# e1 = Edge(V[0], V[1])
-# e2 = Edge(V[1], V[2])
-# e3 = Edge(V[2], V[3])
-# e4 = Edge(V[2], V[4])
-# e5 = Edge(V[4], V[5])
-# e6 = Edge(V[5], V[0])
-# e7 = Edge(V[1], V[5])
-
-# E = [e1, e2, e3, e4, e5, e6, e7]
-
-# G = Graph(V, E)
-
-# assert(G.isDominantSet({V[0], V[3], V[4]}))
-# assert(G.isDominantSet({V[2], V[5]}))
-# assert(G.isDominantSet({V[1], V[2]}))
-
-# assert(not G.isDominantSet({V[0], V[4]}))
-# assert(not G.isDominantSet({V[1], V[3]}))
-
-# print("All tests passed!")
