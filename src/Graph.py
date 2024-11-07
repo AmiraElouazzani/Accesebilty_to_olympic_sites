@@ -6,6 +6,7 @@ from tqdm import tqdm
 import folium
 import osmnx as ox
 import networkx as nx
+from geopy.distance import geodesic
 
 class Graph:
     def __init__(self, vertices: list[Vertex], edges: list[Edge] = [], name="default_name"):
@@ -76,21 +77,27 @@ class Graph:
                 if i != j and not (isinstance(v1, Olympic) and isinstance(v2, Olympic)): 
                         # Find the nearest nodes in the OSM network for each vertex
                         try:
-                            origin_node = ox.distance.nearest_nodes(G, v1.geopoint.longitude, v1.geopoint.latitude)
-                            destination_node = ox.distance.nearest_nodes(G, v2.geopoint.longitude, v2.geopoint.latitude)
+                            distance = geodesic(
+                                (v1.geopoint.latitude, v1.geopoint.longitude),
+                                (v2.geopoint.latitude, v2.geopoint.longitude)
+                            ).meters
 
-                            walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
+                            if distance <= distance_threshold:
 
-                            if walking_distance <= distance_threshold:
-                                walking_time = Edge.walking_time_from_distance(walking_distance)
-                                edge_pair = (v1, v2)
-                                reverse_edge_pair = (v2, v1)
-                                if edge_pair not in existing_edges and reverse_edge_pair not in existing_edges: # Check if the edge or its reverse already exists
-                                    # Create the edge with walking time as the weight
-                                    edge = Edge(v1, v2, walking_time)
-                                    self.cached_edges.append(edge)
-                                    self.edges.append(edge)
-                                    existing_edges.add(edge_pair)  
+                                origin_node = ox.distance.nearest_nodes(G, v1.geopoint.longitude, v1.geopoint.latitude)
+                                destination_node = ox.distance.nearest_nodes(G, v2.geopoint.longitude, v2.geopoint.latitude)
+                                walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
+                            
+                                if walking_distance <= distance_threshold : 
+                                    walking_time = Edge.walking_time_from_distance(walking_distance)
+                                    edge_pair = (v1, v2)
+                                    reverse_edge_pair = (v2, v1)
+                                    if edge_pair not in existing_edges and reverse_edge_pair not in existing_edges: # Check if the edge or its reverse already exists
+                                        # Create the edge with walking time as the weight
+                                        edge = Edge(v1, v2, walking_time)
+                                        self.cached_edges.append(edge)
+                                        self.edges.append(edge)
+                                        existing_edges.add(edge_pair)  
                         except Exception as e:
                             print(f"Error calculating path between {v1.name} and {v2.name}: {e}")
 

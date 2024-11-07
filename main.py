@@ -11,19 +11,19 @@ S = station_parser()
 
 #restriction are made for testing purposes
 
-olympic_restriction = {"Stade Tour Eiffel",
-                       "Pont d'Iéna",
-                       "Arena Champs de Mars",
-                       "Invalides"}
+# olympic_restriction = {"Stade Tour Eiffel",
+#                        "Pont d'Iéna",
+#                        "Arena Champs de Mars",
+#                        "Invalides"}
 
-station_restriction = {"Champs de Mars",
-                       "Bir Hakeim",
-                       "École Militaire",
-                       "Dupleix",
-                       "Invalides"}
+# station_restriction = {"Champs de Mars",
+#                        "Bir Hakeim",
+#                        "École Militaire",
+#                        "Dupleix",
+#                        "Invalides"}
 
-O = [o for o in O if o.name in olympic_restriction]
-S = [s for s in S if s.name in station_restriction]
+# O = [o for o in O if o.name in olympic_restriction]
+# S = [s for s in S if s.name in station_restriction]
 
 V = S + O
 
@@ -32,5 +32,5 @@ G.set_distance_threshold(1000)
 G.draw()
 
 #test brute force
-brute_force_solution = BruteForce.solve(G)
+#brute_force_solution = BruteForce.solve(G)
 progress_solution = Progress.solve(G)
