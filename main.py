@@ -1,6 +1,7 @@
 from src.parser.olympic_parser import olympic_parser
 from src.parser.station_parser import station_parser
 from src.resolve.BruteForce import BruteForce
+from src.resolve.Progress import Progress
 
 from src import Graph
 from src import Edge
@@ -31,4 +32,5 @@ G.set_distance_threshold(1000)
 G.draw()
 
 #test brute force
-A = BruteForce.solve(G)
+brute_force_solution = BruteForce.solve(G)
+progress_solution = Progress.solve(G)

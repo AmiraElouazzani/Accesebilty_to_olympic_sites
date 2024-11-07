@@ -1,5 +1,5 @@
 from bitarray import bitarray
-from bitarray.utils import ba2int, subset, zeros
+from bitarray.util import ba2int, subset, zeros
 from itertools import combinations
 
 from ..Graph import Graph
@@ -9,24 +9,32 @@ from ..Olympic import Olympic
 class Progress:
     @staticmethod
     def solve(G:Graph):
+
+        #first we try if a solution exist
+        for o in G.getOlympics():
+            if not G.get_neighbors(o):
+                print("No solution found")
+                return False
+
         profiles = Progress.make_profiles(G)
         sorted_profiles = Progress.sort_profile(profiles)
-        prime_profiles = eliminate_weak(sorted_profiles)
-        station_to_modify = search_union(prime_profiles)
+        prime_profiles = Progress.eliminate_weak(sorted_profiles)
+        station_to_modify = Progress.search_union(prime_profiles)
         return station_to_modify
 
     #returns an array of bitarray
+    @staticmethod
     def make_profiles(G:Graph):
         stations = G.getStations()
-        olympics = G.getOlympics()
         profiles = []
 
         for s in stations:
-            profile = Progress.make_profile(G, s)
+            profile = Progress.make_profile(G, s, G.getOlympics())
             profiles.append((profile, s))
         return profiles
     
     #returns a bitarray
+    @staticmethod
     def make_profile(G:Graph, s:Station, olympics: list[Olympic]):
         profile = bitarray(len(olympics))
         profile.setall(0)
@@ -38,9 +46,10 @@ class Progress:
         return profile
     
     #sort profiles by decimal value small to big and eliminates duplicate, using counting sort.
-    def sort_profile(Profiles:[(bitarray, Station)]):
+    @staticmethod
+    def sort_profile(Profiles):
 
-        tab_strong = [0]*8192  #2^13
+        tab_strong = [0]*pow(2,len(Profiles[0][0]))  #2^13 in our case
         sorted_profiles= []
     
         for i in Profiles:
@@ -53,7 +62,8 @@ class Progress:
         return sorted_profiles
 
     #eliminates "weaker" profile in the sorted list. [0110] is weaker than [0111] (included) maybe use subset(a, b, /) method from bitarray. 
-    def eliminate_weak(Sorted_profiles:[(bitarray, Station)]):
+    @staticmethod
+    def eliminate_weak(Sorted_profiles):
         prime_profile = []
 
         for sorted_p in Sorted_profiles[::-1]:
@@ -83,7 +93,8 @@ class Progress:
         
 
     #search for the smallest union of profile equals to [11...11], the number of ones is the number of olympic site. And return the corresponding stations.
-    def search_union(prime_profiles:[(bitarray, Station)]):
+    @staticmethod
+    def search_union(prime_profiles):
 
         for i in range(2,len(prime_profiles[0][0])):
         
@@ -91,7 +102,7 @@ class Progress:
             
             for comb in comb_prime:
                 
-                bits_potential_union = zeros(length)
+                bits_potential_union = zeros(len(prime_profiles[0][0]))
                 station_potential_union =[]
                 
                 for j in range(i):
