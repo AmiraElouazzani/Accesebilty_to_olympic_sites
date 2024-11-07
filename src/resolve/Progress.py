@@ -1,6 +1,7 @@
 from bitarray import bitarray
 from bitarray.util import ba2int, subset, zeros
 from itertools import combinations
+from tqdm import tqdm
 
 from ..Graph import Graph
 from ..Station import Station
@@ -28,7 +29,7 @@ class Progress:
         stations = G.getStations()
         profiles = []
 
-        for s in stations:
+        for s in tqdm(stations,desc="compute profiles"):
             profile = Progress.make_profile(G, s, G.getOlympics())
             profiles.append((profile, s))
         return profiles
@@ -42,7 +43,8 @@ class Progress:
         for o in olympics:
             if G.are_adjacent(s, o):
                 profile[profile_index]=1
-        profile_index +=1
+            profile_index +=1
+
         return profile
     
     #sort profiles by decimal value small to big and eliminates duplicate, using counting sort.
@@ -55,7 +57,7 @@ class Progress:
         for i in Profiles:
             if tab_strong[ba2int(i[0])] == 0:
                 tab_strong[ba2int(i[0])] = i
-        for i in tab_strong:
+        for i in tqdm(tab_strong, desc="sorting profiles"):
             if i != 0:
                 sorted_profiles.append(i)
 
@@ -66,7 +68,7 @@ class Progress:
     def eliminate_weak(Sorted_profiles):
         prime_profile = []
 
-        for sorted_p in Sorted_profiles[::-1]:
+        for sorted_p in tqdm(Sorted_profiles[::-1],desc="eliminating weak profiles"):
             
             compteur_prime = 0
             
@@ -96,7 +98,7 @@ class Progress:
     @staticmethod
     def search_union(prime_profiles):
 
-        for i in range(2,len(prime_profiles[0][0])):
+        for i in tqdm(range(2,len(prime_profiles[0][0])),desc="searching union"):
         
             comb_prime = combinations(prime_profiles, i )
             
