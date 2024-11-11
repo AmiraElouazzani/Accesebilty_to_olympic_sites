@@ -28,11 +28,13 @@ S = station_parser()
 
 V = S + O
 
-# IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
+#IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
+
 # G = Graph.Graph(V, [], name="test_graph")
 # G.set_distance_threshold(1000)
 
-# IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
+#IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
+
 # with open('graph.pickle', 'wb') as file:
 #     pickle.dump(G, file)
 
@@ -41,13 +43,25 @@ with open('graph.pickle', 'rb') as file:
     G: Graph = pickle.load(file)
 
 
-G.draw() 
+intermediaire = G.goodOlympics()
 
-G.goodOlympics()
+nbr_good_olymp = intermediaire[0]
+bad_olymp = intermediaire[1]
+
+print("nbr bon site olympique: ", nbr_good_olymp)
+for i in bad_olymp:
+    print(i.__str__())
 
 #test brute force
 #brute_force_solution = BruteForce.solve(G)
 progress_solution = Progress.solve(G)
 
+# uncomment to print station belonging to solution
 for s in progress_solution:
-    print(s.__str__())
+    s.belongSolution()
+#     print(s.__str__())
+
+
+print("solution de taille: ", len(progress_solution))
+
+G.draw() 

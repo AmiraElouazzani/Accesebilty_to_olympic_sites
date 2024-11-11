@@ -33,6 +33,7 @@ class Progress:
         for s in tqdm(stations,desc="compute profiles"):
             profile = Progress.make_profile(G, s, G.getOlympics())
             profiles.append((profile, s))
+        print("tailles des profiles: ",len(profiles[0][0]))
         return profiles
     
     #returns a bitarray

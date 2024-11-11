@@ -63,12 +63,17 @@ class Graph:
     def goodOlympics(self):
 
         good_olympics =[]
+        bad_olympics =[]
         for olymp in self.getOlympics():
 
             if self.get_neighbors(olymp):
                 good_olympics.append(olymp)
+            else:
+                bad_olympics.append(olymp)
 
         self.changeOlympics(good_olympics)
+
+        return (len(good_olympics), bad_olympics)
         
     
     def calculate_edges(self, distance_threshold: float):
@@ -150,7 +155,16 @@ class Graph:
 
         # Plot vertices as markers on the map
         for v in self.vertices:
-            color = 'blue' if isinstance(v, Station) else 'red'
+             
+            if isinstance(v, Station):
+                
+                if v.getSolution():
+                    color = 'green'
+                else:
+                    color = 'blue'
+                
+            else:
+                color = 'red'
             folium.Marker(
                 location=[v.geopoint.latitude, v.geopoint.longitude],
                 popup=v.name,

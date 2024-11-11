@@ -6,6 +6,13 @@ class Station(Site):
         if(accessible):color='green'
         super().__init__(geopoint, name, color)
         self.line_index = line_index
+        self.solution = False
     
     def __str__(self):
         return f"{super().__str__()}, Line Index: {self.line_index}"
+    
+    def belongSolution(self):
+        self.solution = True
+    
+    def getSolution(self):
+        return self.solution
