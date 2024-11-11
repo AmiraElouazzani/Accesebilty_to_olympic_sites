@@ -56,6 +56,21 @@ class Graph:
                     self.olympics.append(v)
         return self.olympics
     
+    def changeOlympics(self, new_olympics):
+
+        self.olympics = new_olympics
+    
+    def goodOlympics(self):
+
+        good_olympics =[]
+        for olymp in self.getOlympics():
+
+            if self.get_neighbors(olymp):
+                good_olympics.append(olymp)
+
+        self.changeOlympics(good_olympics)
+        
+    
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on walking paths."""
         self.cached_edges = []  

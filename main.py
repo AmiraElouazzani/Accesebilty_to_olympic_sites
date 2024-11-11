@@ -43,6 +43,11 @@ with open('graph.pickle', 'rb') as file:
 
 G.draw() 
 
+G.goodOlympics()
+
 #test brute force
 #brute_force_solution = BruteForce.solve(G)
 progress_solution = Progress.solve(G)
+
+for s in progress_solution:
+    print(s.__str__())
