@@ -29,6 +29,7 @@ class Progress:
         stations = G.getStations()
         profiles = []
 
+
         for s in tqdm(stations,desc="compute profiles"):
             profile = Progress.make_profile(G, s, G.getOlympics())
             profiles.append((profile, s))
