@@ -160,27 +160,34 @@ class Graph:
                 
                 if v.getSolution():
                     color = 'green'
+                    
                 else:
                     color = 'blue'
                 
             else:
                 color = 'red'
-            folium.Marker(
-                location=[v.geopoint.latitude, v.geopoint.longitude],
-                popup=v.name,
-                icon=folium.Icon(color=color)
-            ).add_to(folium_map)
+            
+            v.set_color(color)
+            
+            if(color in('red', 'green')): # verify that the vertex is an olympic site or a station to modify
+                folium.Marker(
+                    location=[v.geopoint.latitude, v.geopoint.longitude],
+                    popup=v.name,
+                    icon=folium.Icon(color=color)
+                ).add_to(folium_map)
 
         # Plot edges as lines with walking time
         for edge in tqdm(self.cached_edges, desc="Drawing edges"):
-            folium.PolyLine(
-                locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
-                        (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
-                color="black",
-                weight=2,
-                opacity=1,
-                tooltip=f"Walking time: {round(edge.weight, 2)} minutes"  # Display walking time as tooltip
-            ).add_to(folium_map)
+
+            if(edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green')): #verify if the edge connect an olympic site to a station to modify
+                folium.PolyLine(
+                    locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
+                            (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
+                    color="black",
+                    weight=2,
+                    opacity=1,
+                    tooltip=f"Walking time: {round(edge.weight, 2)} minutes"  # Display walking time as tooltip
+                ).add_to(folium_map)
 
         folium_map.save("map.html")  
         return folium_map 
