@@ -33,7 +33,7 @@ class Progress:
         for s in tqdm(stations,desc="compute profiles"):
             profile = Progress.make_profile(G, s, G.getOlympics())
             profiles.append((profile, s))
-        print("tailles des profiles: ",len(profiles[0][0]))
+        #print("tailles des profiles: ",len(profiles[0][0]))                debug line
         return profiles
     
     #returns a bitarray
@@ -49,20 +49,12 @@ class Progress:
 
         return profile
     
-    #sort profiles by decimal value small to big and eliminates duplicate, using counting sort.
+    #sort profiles by decimal value small to big.
     @staticmethod
     def sort_profile(Profiles):
-
-        tab_strong = [0]*pow(2,len(Profiles[0][0]))  #2^13 in our case
-        sorted_profiles= []
-    
-        for i in Profiles:
-            if tab_strong[ba2int(i[0])] == 0:
-                tab_strong[ba2int(i[0])] = i
-        for i in tqdm(tab_strong, desc="sorting profiles"):
-            if i != 0:
-                sorted_profiles.append(i)
-
+        
+        sorted_profiles = sorted(Profiles, key=lambda Profiles: ba2int(Profiles[0]))
+        
         return sorted_profiles
 
     #eliminates "weaker" profile in the sorted list. [0110] is weaker than [0111] (included) maybe use subset(a, b, /) method from bitarray. 
@@ -79,11 +71,11 @@ class Progress:
                 for prime in prime_profile:
                     
                     if(subset(sorted_p[0], prime[0])):
-                        break
+                        break                               #si subset d'au moins un alors on ajoute pas à notre liste finale
                         
-                    compteur_prime +=1   
+                    compteur_prime +=1                      # on compte de combien il n'est pas subset 
                     
-                if compteur_prime == len(prime_profile):
+                if compteur_prime == len(prime_profile):    #si il n'est subset d'aucun alors on ajoute a la liste finale
                     
                     prime_profile.append(sorted_p)
             
