@@ -12,6 +12,7 @@ class Graph:
     def __init__(self, vertices: list[Vertex], edges: list[Edge] = [], name="default_name"):
         self.vertices = vertices
         self.olympics = self.getOlympics()
+        self.progressOlympics = []
         self.stations = self.getStations()
         self.edges = edges
         self.cached_edges = []
@@ -74,7 +75,15 @@ class Graph:
         self.changeOlympics(good_olympics)
 
         return (len(good_olympics), bad_olympics)
+    
+    def getprogressOlympics(self):
         
+        progressolympics = self.progressOlympics
+        return progressolympics
+
+    def setprogressOlympics(self, newOlympics):
+        self.progressOlympics.append(newOlympics)
+                
     
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on walking paths."""

@@ -17,22 +17,53 @@ class Progress:
                 print("No solution found")
                 return False
 
-        profiles = Progress.make_profiles(G)
+        profiles = Progress.make_profiles(G, False)
         sorted_profiles = Progress.sort_profile(profiles)
         prime_profiles = Progress.eliminate_weak(sorted_profiles)
         station_to_modify = Progress.search_union(prime_profiles)
         return station_to_modify
 
+    #progressive way, The graph doesn't contain "bad" olympic site
+    def kaizen(G:Graph):
+
+        W = []
+        for o in G.getOlympics():
+            W.append(o)
+            profiles = Progress.make_profiles(G,True)
+            sorted_profiles = Progress.sort_profile(profiles)
+            prime_profiles = Progress.eliminate_weak(sorted_profiles)
+            station_to_modify = Progress.search_union(prime_profiles)
+
+            if station_to_modify != False:
+                #tester si la solution valide sur W est valide sur tt les sites olympique. Si oui break et return cette solution
+                profiles_complets = []
+                for s in station_to_modify:
+
+                    profil_to_add =(Progress.make_profile(G,s,G.getOlympics),s)
+                    profiles_complets.append(profil_to_add)
+
+                full_stationtomodify = Progress.search_union(profiles_complets)
+                if full_stationtomodify != False:
+                    return full_stationtomodify
+
+        return False    
+                
     #returns an array of bitarray
     @staticmethod
-    def make_profiles(G:Graph):
+    def make_profiles(G:Graph, kaizen: bool):
         stations = G.getStations()
         profiles = []
 
+        if not kaizen:
 
-        for s in tqdm(stations,desc="compute profiles"):
-            profile = Progress.make_profile(G, s, G.getOlympics())
-            profiles.append((profile, s))
+            for s in tqdm(stations,desc="compute profiles"):
+                profile = Progress.make_profile(G, s, G.getOlympics())
+                profiles.append((profile, s))
+        else:
+            for s in tqdm(stations,desc="compute profiles"):
+                profile = Progress.make_profile(G, s, G.getprogressOlympics())
+                profiles.append((profile, s))
+
         #print("tailles des profiles: ",len(profiles[0][0]))                debug line
         return profiles
     
@@ -110,6 +141,7 @@ class Progress:
                 if(bits_potential_union.all()):
                     
                     return station_potential_union
+                    
             
         return False
     
