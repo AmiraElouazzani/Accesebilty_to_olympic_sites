@@ -56,6 +56,26 @@ class Graph:
                     self.olympics.append(v)
         return self.olympics
     
+    def changeOlympics(self, new_olympics):
+
+        self.olympics = new_olympics
+    
+    def goodOlympics(self):
+
+        good_olympics =[]
+        bad_olympics =[]
+        for olymp in self.getOlympics():
+
+            if self.get_neighbors(olymp):
+                good_olympics.append(olymp)
+            else:
+                bad_olympics.append(olymp)
+
+        self.changeOlympics(good_olympics)
+
+        return (len(good_olympics), bad_olympics)
+        
+    
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on walking paths."""
         self.cached_edges = []  
@@ -135,23 +155,39 @@ class Graph:
 
         # Plot vertices as markers on the map
         for v in self.vertices:
-            color = 'blue' if isinstance(v, Station) else 'red'
-            folium.Marker(
-                location=[v.geopoint.latitude, v.geopoint.longitude],
-                popup=v.name,
-                icon=folium.Icon(color=color)
-            ).add_to(folium_map)
+             
+            if isinstance(v, Station):
+                
+                if v.getSolution():
+                    color = 'green'
+                    
+                else:
+                    color = 'blue'
+                
+            else:
+                color = 'red'
+            
+            v.set_color(color)
+            
+            if(color in('red', 'green')): # verify that the vertex is an olympic site or a station to modify
+                folium.Marker(
+                    location=[v.geopoint.latitude, v.geopoint.longitude],
+                    popup=v.name,
+                    icon=folium.Icon(color=color)
+                ).add_to(folium_map)
 
         # Plot edges as lines with walking time
         for edge in tqdm(self.cached_edges, desc="Drawing edges"):
-            folium.PolyLine(
-                locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
-                        (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
-                color="black",
-                weight=2,
-                opacity=1,
-                tooltip=f"Walking time: {round(edge.weight, 2)} minutes"  # Display walking time as tooltip
-            ).add_to(folium_map)
+
+            if(edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green')): #verify if the edge connect an olympic site to a station to modify
+                folium.PolyLine(
+                    locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
+                            (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
+                    color="black",
+                    weight=2,
+                    opacity=1,
+                    tooltip=f"Walking time: {round(edge.weight, 2)} minutes"  # Display walking time as tooltip
+                ).add_to(folium_map)
 
         folium_map.save("map.html")  
         return folium_map 
