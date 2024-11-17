@@ -4,6 +4,7 @@ from src.resolve.BruteForce import BruteForce
 from src.resolve.Progress import Progress
 from src.resolve.BandB import ensemble_dominant, draw_minimum_dominating_set
 import pickle
+import time
 
 from src import Graph
 from src import Edge
@@ -27,38 +28,39 @@ S = station_parser()
 # O = [o for o in O if o.name in olympic_restriction]
 # S = [s for s in S if s.name in station_restriction]
 
-olympic_restriction = {"Stade Tour Eiffel",
-                       "Pont d'Iéna", "Terrain des Essences - La Courneuve","Village des médias",
-                       "Arena Champs de Mars", "Stade Pierre de Coubertin","Parc des Princes",
-                       "Invalides","Hôtel de ville de Paris",
-                       "Grand Palais","Stade de la Concorde",
-                       "Invalides","Arena Paris Sud 4 (Porte de Versailles)",
-                       "Arena Paris Sud 6 (Porte de Versailles)","Arena Paris Sud 1 (Porte de Versailles)"}
+# olympic_restriction = {"Stade Tour Eiffel",
+#                        "Pont d'Iéna", "Terrain des Essences - La Courneuve","Village des médias",
+#                        "Arena Champs de Mars", "Stade Pierre de Coubertin","Parc des Princes",
+#                        "Invalides","Hôtel de ville de Paris",
+#                        "Grand Palais","Stade de la Concorde",
+#                        "Invalides","Arena Paris Sud 4 (Porte de Versailles)",
+#                        "Arena Paris Sud 6 (Porte de Versailles)","Arena Paris Sud 1 (Porte de Versailles)"}
 
-station_restriction = {"Champs de Mars","Stains La Cerisaie",
-                       "Bir Hakeim","Dugny - La Courneuve",
-                       "École Militaire","Exelmans","Issy-Val-de-Seine","Porte de Saint-Cloud",
-                       "Dupleix", "Corentin Celton","Georges Brassens","Henri Farman",
-                       "Invalides","Châtelet","Pont Neuf","Porte de Versailles"}
+# station_restriction = {"Champs de Mars","Stains La Cerisaie",
+#                        "Bir Hakeim","Dugny - La Courneuve",
+#                        "École Militaire","Exelmans","Issy-Val-de-Seine","Porte de Saint-Cloud",
+#                        "Dupleix", "Corentin Celton","Georges Brassens","Henri Farman",
+#                        "Invalides","Châtelet","Pont Neuf","Porte de Versailles"}
 
-O = [o for o in O if o.name in olympic_restriction]
-S = [s for s in S if s.name in station_restriction]
+# O = [o for o in O if o.name in olympic_restriction]
+# S = [s for s in S if s.name in station_restriction]
+
 
 V = S + O
 
 #IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
 
-G = Graph.Graph(V, [], name="test_graph")
-G.set_distance_threshold(1000)
+# G = Graph.Graph(V, [], name="test_graph")
+# G.set_distance_threshold(1000)
 
-#IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
+#  #IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
 
-with open('graph.pickle', 'wb') as file:
-    pickle.dump(G, file)
+# with open('fullgraph.pickle', 'wb') as file:
+#     pickle.dump(G, file)
 
 # IMPORTANT lines to comment if the pickle object of the graph is not created yet IMPORTANT
-# with open('graph.pickle', 'rb') as file:
-#     G: Graph = pickle.load(file)
+with open('fullgraph.pickle', 'rb') as file:
+    G: Graph = pickle.load(file)
 
 
 intermediaire = G.goodOlympics()
@@ -70,21 +72,33 @@ print("nbr bon site olympique: ", nbr_good_olymp)
 for i in bad_olymp:
     print(i.__str__())
 
-
+start_time = time.time()
 #brute_force_solution = BruteForce.solve(G)
 
-progress_solution = Progress.solve(G)
+solution = Progress.solve(G)
 
-#kaizen_solution = Progress.kaizen(G)
+#solution = Progress.kaizen(G)
+end_time = time.time()
+elapsed_time = end_time - start_time
+
+print("solution obtenue en ", elapsed_time, " secondes")
+
 
 #Branch and Bound
 # best_solution = ensemble_dominant(G)
 # draw_minimum_dominating_set(G, best_solution)
 
-# uncomment to print station belonging to solution
-# for s in progress_solution:
-#     s.belongSolution()
-#     print(s.__str__())
+if not solution:
+    print("pas de solution ou erreur")
+else:
+
+    for s in solution:
+        s.belongSolution()
+        
+
+        # uncomment to print station belonging to solution
+        #print(s.__str__())
+    print(len(solution))
 
 
 #print("solution de taille: ", len(progress_solution))

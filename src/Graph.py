@@ -78,10 +78,11 @@ class Graph:
     
     def getprogressOlympics(self):
         
-        progressolympics = self.progressOlympics
-        return progressolympics
+        #print(self.progressOlympics)
+       # progressolympics = self.progressOlympics
+        return self.progressOlympics
 
-    def setprogressOlympics(self, newOlympics):
+    def addprogressOlympics(self, newOlympics):
         self.progressOlympics.append(newOlympics)
                 
     
