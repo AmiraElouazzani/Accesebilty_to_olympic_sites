@@ -50,8 +50,8 @@ V = S + O
 
 #IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
 
-# G = Graph.Graph(V, [], name="test_graph")
-# G.set_distance_threshold(1000)
+G = Graph.Graph(V, O, S, [], name="test_graph")
+G.set_distance_threshold(1000)
 
 #  #IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
 
@@ -59,8 +59,8 @@ V = S + O
 #     pickle.dump(G, file)
 
 # IMPORTANT lines to comment if the pickle object of the graph is not created yet IMPORTANT
-with open('fullgraph.pickle', 'rb') as file:
-    G: Graph = pickle.load(file)
+# with open('fullgraph.pickle', 'rb') as file:
+#     G: Graph = pickle.load(file)
 
 
 intermediaire = G.goodOlympics()
@@ -94,10 +94,11 @@ else:
 
     for s in solution:
         s.belongSolution()
+
         
 
         # uncomment to print station belonging to solution
-        #print(s.__str__())
+        print(s.__str__())
     print(len(solution))
 
 

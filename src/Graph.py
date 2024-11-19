@@ -9,11 +9,11 @@ import networkx as nx
 from geopy.distance import geodesic
 
 class Graph:
-    def __init__(self, vertices: list[Vertex], edges: list[Edge] = [], name="default_name"):
+    def __init__(self, vertices: list[Vertex], olympics: list[Olympic], stations: list[Station], edges: list[Edge] = [], name="default_name"):
         self.vertices = vertices
-        self.olympics = self.getOlympics()
+        self.olympics = olympics
         self.progressOlympics = []
-        self.stations = self.getStations()
+        self.stations = stations
         self.edges = edges
         self.cached_edges = []
 
@@ -85,7 +85,57 @@ class Graph:
     def addprogressOlympics(self, newOlympics):
         self.progressOlympics.append(newOlympics)
                 
-    
+    def usefull_edges(self, distance_threshold):
+        
+        olympics = self.getOlympics()
+        stations = self.getStations()
+        walking_speed = 91.68 #in meters/minutes
+
+        #preprocessing on all olympics to see which one are close in order to cut useless calculation later.
+        #for o in olympics:
+
+
+        latitudemed = 0
+        longitudemed = 0
+
+        for v in tqdm(self.vertices, desc = "calculting graph center"):
+            latitudemed += v.geopoint.latitude
+            longitudemed+= v.geopoint.longitude
+        
+        graph_center = (
+            latitudemed / len(self.vertices),
+            longitudemed / len(self.vertices)
+        )
+
+        # Retrieve a walking network from OpenStreetMap for the area around the center point
+        G = ox.graph_from_point(graph_center, dist=distance_threshold, network_type='walk')
+
+        for sta in tqdm(stations,desc = "calculating usefull edges"):
+            
+            for olymp in olympics:
+
+                distance = geodesic(
+                                (sta.geopoint.latitude, sta.geopoint.longitude),
+                                (olymp.geopoint.latitude, olymp.geopoint.longitude)
+                            ).meters
+                
+                if distance <= distance_threshold:
+
+                    origin_node = ox.distance.nearest_nodes(G, sta.geopoint.longitude, sta.geopoint.latitude)
+                    destination_node = ox.distance.nearest_nodes(G, olymp.geopoint.longitude, olymp.geopoint.latitude)
+                    walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
+
+                    if walking_distance <= distance_threshold : 
+                        edge = Edge(sta, olymp, walking_distance / walking_speed) 
+                        self.edges.append(edge)
+                        self.cached_edges.append(edge)
+                    
+
+
+                
+            
+            
+        return True
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on walking paths."""
         self.cached_edges = []  
@@ -187,7 +237,7 @@ class Graph:
                 ).add_to(folium_map)
 
         # Plot edges as lines with walking time
-        for edge in tqdm(self.cached_edges, desc="Drawing edges"):
+        for edge in tqdm(self.edges, desc="Drawing edges"):
 
             if(edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green')): #verify if the edge connect an olympic site to a station to modify
                 folium.PolyLine(
@@ -204,4 +254,4 @@ class Graph:
 
     def set_distance_threshold(self, distance_threshold: float):
         """Set distance threshold and calculate edges based on it."""
-        self.calculate_edges(distance_threshold)
+        self.usefull_edges(distance_threshold)
