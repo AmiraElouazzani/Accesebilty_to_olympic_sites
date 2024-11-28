@@ -22,7 +22,6 @@ def ensemble_dominant(graph: Graph, S=set(), k=None, processed=None, dominated_e
     if dominated_edges is None:
         dominated_edges = set()
 
-    # Base case: If k == 0, check if S is a valid solution
     if k is not None and k == 0:
         if graph.isSolutionOfAccessibility(S):
             print(f"Found solution: {S}")
@@ -32,7 +31,6 @@ def ensemble_dominant(graph: Graph, S=set(), k=None, processed=None, dominated_e
     # Check if the partial solution S already dominates all Olympic sites
     if graph.isSolutionOfAccessibility(S):
         print(f"Solution found with {len(S)} stations: {S}")
-        # Final check to ensure no double domination
         return remove_double_dominated_stations(graph, S)
 
     # Identify undominated Olympic sites
@@ -42,13 +40,13 @@ def ensemble_dominant(graph: Graph, S=set(), k=None, processed=None, dominated_e
         # Final check to ensure no double domination
         return remove_double_dominated_stations(graph, S)
 
-    # Choose a vertex with the minimum degree among the uncovered vertices
+    #heuristic
     u = min(uncovered_sites, key=lambda v: len(graph.get_neighbors(v)))
 
-    # Add u to the processed set to avoid revisiting
+    #avoid revisiting
     processed.add(u)
 
-    # Recursively try adding each neighbor of u to the solution set
+    #adding each neighbor of u to the solution set
     for v in graph.get_neighbors(u):
         if v not in S:
             # Check if adding v would dominate an edge that hasn't been dominated yet
@@ -56,10 +54,7 @@ def ensemble_dominant(graph: Graph, S=set(), k=None, processed=None, dominated_e
             
             if new_dominated_edges:
                 new_solution = S | {v}
-                # Update the set of dominated edges
                 dominated_edges.update(new_dominated_edges)
-
-                # Avoid exploring branches where k is zero or negative
                 if k is not None and k > 0:
                     result = ensemble_dominant(graph, new_solution, k - 1, processed, dominated_edges)
                 else:
@@ -73,14 +68,6 @@ def ensemble_dominant(graph: Graph, S=set(), k=None, processed=None, dominated_e
     return None
 
 def remove_double_dominated_stations(graph: Graph, solution: set):
-    """
-    Removes redundant stations from the solution that contribute to double domination.
-    Args:
-        graph: The graph instance.
-        solution: The current solution set of stations.
-    Returns:
-        A refined solution set where each edge is only dominated once.
-    """
     # Create a set to track edges already dominated
     dominated_edges = set()
     refined_solution = set()
