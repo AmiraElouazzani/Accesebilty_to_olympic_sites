@@ -73,35 +73,45 @@ for i in bad_olymp:
     print(i.__str__())
 
 start_time = time.time()
+
 #brute_force_solution = BruteForce.solve(G)
 
-solution = Progress.solve(G)
+# solution = Progress.solve(G)
 
-#solution = Progress.kaizen(G)
-end_time = time.time()
-elapsed_time = end_time - start_time
+# solution = Progress.kaizen(G)
+# end_time = time.time()
+# elapsed_time = end_time - start_time
 
-print("solution obtenue en ", elapsed_time, " secondes")
+# print("solution obtenue en ", elapsed_time, " secondes")
 
+G.draw()
 
 #Branch and Bound
-# best_solution = ensemble_dominant(G)
-# draw_minimum_dominating_set(G, best_solution)
 
-if not solution:
-    print("pas de solution ou erreur")
-else:
+# Example usage
+# solution = ensemble_dominant(G,set(), k=32)
+# if solution is not None:
+#     print(f"Found solution with {len(solution)} stations")
+#     # These stations form a minimum dominating set
+#     for station in solution:
+#         print(f"Selected station: {station.name}")
 
-    for s in solution:
-        s.belongSolution()
+#     # Visualize if needed
+#     draw_minimum_dominating_set(G, solution)
+# else:
+#     print("No solution found")
+# if not solution:
+#     print("pas de solution ou erreur")
+# else:
 
-        
+#     for s in solution:
+#         s.belongSolution()
 
-        # uncomment to print station belonging to solution
-        print(s.__str__())
-    print(len(solution))
+
+
+#         # uncomment to print station belonging to solution
+#         print(s.__str__())
+#     print(len(solution))
 
 
 #print("solution de taille: ", len(progress_solution))
-
-G.draw() 
