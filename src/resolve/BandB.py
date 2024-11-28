@@ -68,19 +68,25 @@ def ensemble_dominant(graph: Graph, S=set(), k=None, processed=None, dominated_e
     return None
 
 def remove_double_dominated_stations(graph: Graph, solution: set):
-    # Create a set to track edges already dominated
-    dominated_edges = set()
+
+    #track the edges dominated by each station
+    station_dominated_edges = {}
+
+    # set of dominated edges for each station
+    for station in solution:
+        station_dominated_edges[station] = {
+            edge for edge in graph.cached_edges if (edge.vertex1 == station or edge.vertex2 == station)
+        }
+
+    #keep only stations that have unique coverage
     refined_solution = set()
+    all_dominated_edges = set()
 
     for station in solution:
-        # Check if adding this station results in dominating any edge not already dominated
-        new_dominated_edges = {edge for edge in graph.cached_edges if (edge.vertex1 == station or edge.vertex2 == station) and edge not in dominated_edges}
-        
-        if new_dominated_edges:
-            # Add the station if it covers new edges
+        # Check if edges of station are already covered
+        if not station_dominated_edges[station].issubset(all_dominated_edges):
             refined_solution.add(station)
-            # Mark these edges as dominated
-            dominated_edges.update(new_dominated_edges)
+            all_dominated_edges.update(station_dominated_edges[station])
 
     return refined_solution
 
