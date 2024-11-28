@@ -125,17 +125,18 @@ class Graph:
                     destination_node = ox.distance.nearest_nodes(G, olymp.geopoint.longitude, olymp.geopoint.latitude)
                     walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
 
-                    if walking_distance <= distance_threshold : 
-                        edge = Edge(sta, olymp, walking_distance / walking_speed) 
-                        self.edges.append(edge)
-                        self.cached_edges.append(edge)
-                    
+                    if walking_distance <= distance_threshold:
+                        # Calculate walking time in minutes
+                        walking_time = walking_distance / walking_speed
+                        if walking_time > 0:  # Ensure valid walking time
+                            edge = Edge(sta, olymp, walking_time)  # Create the edge with walking time as the weight
+                            self.edges.append(edge)
+                            self.cached_edges.append(edge)
 
-
-                
-            
-            
         return True
+    
+
+
     def calculate_edges(self, distance_threshold: float):
         """Calculate and cache edges between vertices based on walking paths."""
         self.cached_edges = []  
@@ -220,7 +221,7 @@ class Graph:
                 
                 if v.getSolution():
                     color = 'green'
-                    
+                    print("m colored green")
                 else:
                     color = 'blue'
                 
@@ -237,17 +238,21 @@ class Graph:
                 ).add_to(folium_map)
 
         # Plot edges as lines with walking time
-        for edge in tqdm(self.edges, desc="Drawing edges"):
-
-            if(edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green')): #verify if the edge connect an olympic site to a station to modify
+        for edge in tqdm(self.cached_edges, desc="Drawing edges"):
+            
+            if(edge.vertex1.get_color() in('red', 'blue') and edge.vertex2.get_color() in('red', 'blue')): #verify if the edge connect an olympic site to a station to modify
+                total_seconds = round(edge.weight * 60)  # Convert minutes to total seconds
+                minutes = total_seconds // 60
+                seconds = total_seconds % 60
+                print(f"Drawing edge between {edge.vertex1.name} and {edge.vertex2.name} with color {edge.vertex1.get_color()}")
                 folium.PolyLine(
                     locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
                             (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
                     color="black",
                     weight=2,
                     opacity=1,
-                    tooltip=f"Walking time: {round(edge.weight, 2)} minutes"  # Display walking time as tooltip
-                ).add_to(folium_map)
+                    tooltip=f"Walking time: {minutes} mins {seconds} secs"  # Updated tooltip format
+                                                ).add_to(folium_map)
 
         folium_map.save("map.html")  
         return folium_map 
