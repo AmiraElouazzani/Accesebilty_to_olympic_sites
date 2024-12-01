@@ -17,10 +17,16 @@ class Progress:
                 print("No solution found")
                 return False
 
-        profiles = Progress.goodmakeprofiles(G, False)
+        #profiles = Progress.make_profiles(G, False)
+        G.makeprofiles()
+        profiles = Progress.getprofiles(G)
         sorted_profiles = Progress.sort_profile(profiles)
         prime_profiles = Progress.eliminate_weak(sorted_profiles)
         station_to_modify = Progress.search_union(prime_profiles)
+
+        for s in station_to_modify:
+            s.belongSolution()
+
         return station_to_modify
 
     #progressive way, The graph doesn't contain "bad" olympic site
@@ -64,6 +70,10 @@ class Progress:
                 
                 if full_stationtomodify != False:
                     #print("taille solution",len(full_stationtomodify), "taille profiles", len(profiles_complets))
+
+                    for s in full_stationtomodify:
+                        s.belongSolution()
+                    
                     return full_stationtomodify
             else:
                 
@@ -106,21 +116,71 @@ class Progress:
     #returns an array of bitarray
     @staticmethod
     def make_profiles(G:Graph, kaizen: bool):
-        stations = G.getStations()
+        olympics = G.getOlympics()
         profiles = []
+        profile_index = 0
+        station_set = set()
+        invalides = 0
 
-        if not kaizen:
+        for o in olympics:
+            profile0 = zeros(len(olympics))
+            okprofile = 0
+            adja = o.getadja()
 
-            for s in tqdm(stations,desc="compute profiles"):
-                profile = Progress.make_profile(G, s, G.getOlympics())
-                profiles.append((profile, s))
-        else:
-            for s in tqdm(stations,desc="compute profiles k"):
-                profile = Progress.make_profile(G, s, G.getprogressOlympics())
-                profiles.append((profile, s))
+            for sta in adja:
 
-        #print("tailles des profiles: ",len(profiles[0][0]))                debug line
+                if sta.getname() == 'Invalides':
+                    print("Invalides adja" + " " + o.__str__())
+                    invalides = sta
+
+                station_set.add(sta)
+
+                if sta.getprofile() == 'e':
+
+                    sta.setprofile(profile0)
+
+                if sta.getname() == 'Invalides':
+
+                    print("avant")
+                    print(sta.getprofile())
+
+                if profile_index == 15:
+                    print(sta.__str__())
+                    print(sta.getprofile())
+                    print("15 avant")
+                    print(invalides.getprofile())
+
+                sta.changeprofile(profile_index, 1 )
+
+                if profile_index == 15:
+
+                    print(sta.getprofile())
+                    print("15 après")
+                    print(invalides.getprofile())
+
+
+                if sta.getname() == 'Invalides':
+                    
+                    print("après")
+                    print(sta.getprofile())
+
+            profile_index+=1
+
+            if invalides !=0:
+                print("test invalide" , profile_index)
+                print(invalides.getprofile())
+        
+        for sta in station_set:
+            profile = sta.getprofile()
+            if sta.getname() == 'Invalides':
+
+                print("dernier moment")
+                print(profile)
+            profiles.append((profile,sta))
+        
         return profiles
+
+        
     
     #returns a bitarray
     @staticmethod
@@ -132,6 +192,7 @@ class Progress:
             olympics = G.getOlympics()
 
         stationdict ={}
+        stationlist=[]
         profile_index = 0
         #print(len(olympics))
 
@@ -140,12 +201,13 @@ class Progress:
             
             profile0 = bitarray(len(olympics))    #problème est ici les premiers créé sont de longueur 1 et donc on ne peut pas accéder plus loin, il faut remplir de 0
             profile0.setall(0)
+            liste_adja = o.getadja()
 
-            for sta in G.get_neighbors(o):
+            for sta in liste_adja:
 
-                if sta.getprofile() == 0:
+                # if sta.getprofile() == 'e':
 
-                    sta.setprofile(profile0)
+                #     sta.setprofile(profile0)
                 
                 okprofile = sta.getprofile()
 
@@ -156,14 +218,17 @@ class Progress:
                 okprofile[profile_index] = 1
 
                 sta.setprofile(okprofile)    
-                
-                stationdict[sta] = sta.getprofile()
+
+                #profile = sta.getprofile()
+                #station_name = sta.getname()
+                #stationdict[station_name] = profile
+                stationlist.append(sta)
 
             profile_index +=1
 
         actualprofiles = []
         #print("taille du dctionnaire de stations",len(stationdict))
-        for i in stationdict:
+        for i in stationlist:
             
             actualprofiles.append((i.getprofile(),i))
         
@@ -192,6 +257,8 @@ class Progress:
     def sort_profile(Profiles):
         
         sorted_profiles = sorted(Profiles, key=lambda Profiles: ba2int(Profiles[0]))
+        # print("profil le plus lourd")
+        # print(sorted_profiles[-1][0])
         
         return sorted_profiles
 
@@ -230,8 +297,9 @@ class Progress:
     #search for the smallest union of profile equals to [11...11], the number of ones is the number of olympic site. And return the corresponding stations.
     @staticmethod
     def search_union(prime_profiles):
-
+        witness = set()
         taille_profile = len(prime_profiles[0][0])
+
         #print("taille du profil search union",taille_profile, "nombre de stations", len(prime_profiles))
         for i in tqdm(range(1,taille_profile+1),desc="searching union"):
         
@@ -247,6 +315,7 @@ class Progress:
                     bits_potential_union = bits_potential_union | (comb[j][0])
             
                     station_potential_union.append(comb[j][1])
+                    witness.add( comb[j][1])
                 
                 if(bits_potential_union.all()):
                     
@@ -254,12 +323,26 @@ class Progress:
                     #     for pp in prime_profiles:
 
                     #         print("profiles 11",pp[0],pp[1].__str__())
-                    #     for sta in station_potential_union:
-                    #         print(sta.__str__())
+                    # for sta in witness:
+                    #     print(sta.__str__(), sta.getprofile())
+
                     return station_potential_union
-                    
-            
+        
         return False
+                
+    
+    @staticmethod
+    def getprofiles( G: Graph):
+
+        profiles = []
+        stations = G.getStations()
+
+        for sta in stations:
+
+            profiles.append((sta.getprofile(),sta))
+
+            
+        return profiles
     
 
 

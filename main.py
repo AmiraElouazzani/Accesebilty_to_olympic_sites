@@ -2,6 +2,9 @@ from src.parser.olympic_parser import olympic_parser
 from src.parser.station_parser import station_parser
 from src.resolve.BruteForce import BruteForce
 from src.resolve.Progress import Progress
+from src.Olympic import Olympic
+from src.Station import Station
+from src.Graph import Graph
 from src.resolve.BandB import ensemble_dominant, draw_minimum_dominating_set
 import pickle
 import time
@@ -51,15 +54,16 @@ V = S + O
 #IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
 
 G = Graph.Graph(V, O, S, [], name="test_graph")
-G.set_distance_threshold(1000)
+#G.set_distance_threshold(2000)
+G.set_restriction_minutes(10)
 
 #  #IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
 
-# with open('fullgraph.pickle', 'wb') as file:
-#     pickle.dump(G, file)
+with open('fullgraph.pickle', 'wb') as file:
+    pickle.dump(G, file)
 
 # IMPORTANT lines to comment if the pickle object of the graph is not created yet IMPORTANT
-# with open('fullgraph.pickle', 'rb') as file:
+# with open('graph.pickle', 'rb') as file:
 #     G: Graph = pickle.load(file)
 
 
@@ -69,20 +73,40 @@ nbr_good_olymp = intermediaire[0]
 bad_olymp = intermediaire[1]
 
 print("nbr bon site olympique: ", nbr_good_olymp)
-for i in bad_olymp:
+for i in G.getOlympics():
     print(i.__str__())
 
 start_time = time.time()
 
 #brute_force_solution = BruteForce.solve(G)
 
-# solution = Progress.solve(G)
+solution = Progress.solve(G)
 
-# solution = Progress.kaizen(G)
-# end_time = time.time()
-# elapsed_time = end_time - start_time
+#solution = Progress.kaizen(G)
 
-# print("solution obtenue en ", elapsed_time, " secondes")
+end_time = time.time()
+elapsed_time = end_time - start_time
+
+if not solution:
+    print("pas de solution ou erreur")
+        # uncomment to print station belonging to solution
+        # print(s.__str__())
+        # print(len(solution))
+
+print("solution obtenue en ", elapsed_time, " secondes")
+print("solution de taille: " + len(solution).__str__())
+for i in solution:
+    print(i.getname())
+   
+    
+# for i in solution:
+#     adja = i.getadja()
+#     for j in adja:
+#         if isinstance(j, Olympic) and isinstance(i, Station):
+#             namei = i.getname()
+#             namej= j.getname()
+#             print(namei + " 1 " + namej)
+
 
 G.draw()
 
@@ -100,18 +124,7 @@ G.draw()
 #     draw_minimum_dominating_set(G, solution)
 # else:
 #     print("No solution found")
-# if not solution:
-#     print("pas de solution ou erreur")
-# else:
 
-#     for s in solution:
-#         s.belongSolution()
-
-
-
-#         # uncomment to print station belonging to solution
-#         print(s.__str__())
-#     print(len(solution))
 
 
 #print("solution de taille: ", len(progress_solution))

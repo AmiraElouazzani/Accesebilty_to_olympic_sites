@@ -7,12 +7,20 @@ class Site(Vertex):
         super().__init__(color)
         self.geopoint = geopoint
         self.name = name
+        
 
     def get_position(self):
         return [self.geopoint.latitude, self.geopoint.longitude]
 
     def __str__(self):
         return f"Site: {self.name}, {self.geopoint}"
+    
+    def getname(self):
+
+        return self.name
+    
+
+    
     
 
 

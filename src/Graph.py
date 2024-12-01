@@ -7,6 +7,8 @@ import folium
 import osmnx as ox
 import networkx as nx
 from geopy.distance import geodesic
+from bitarray import bitarray
+from bitarray.util import ba2int, subset, zeros
 
 class Graph:
     def __init__(self, vertices: list[Vertex], olympics: list[Olympic], stations: list[Station], edges: list[Edge] = [], name="default_name"):
@@ -33,13 +35,20 @@ class Graph:
         return False
 
     def get_neighbors(self, v : Vertex):
-        neighbors = set()
-        for e in self.edges:
-            if e.vertex1 == v:
-                neighbors.add(e.vertex2)
-            if e.vertex2 == v:
-                neighbors.add(e.vertex1)
+        neighbors = v.getadja()
+        
         return neighbors
+    
+    def has_neighbours_station(self,v: Vertex):
+        neighbors = v.getadja()
+
+        if neighbors != False:
+            for ver in neighbors:
+                if isinstance(ver, Station):
+                    return True
+       
+        return False
+
 
     def getStations(self):
         if(not hasattr(self, "stations")):
@@ -67,7 +76,7 @@ class Graph:
         bad_olympics =[]
         for olymp in self.getOlympics():
 
-            if self.get_neighbors(olymp):
+            if self.has_neighbours_station(olymp):
                 good_olympics.append(olymp)
             else:
                 bad_olympics.append(olymp)
@@ -89,9 +98,11 @@ class Graph:
         
         olympics = self.getOlympics()
         stations = self.getStations()
-        walking_speed = 91.68 #in meters/minutes
 
-        #preprocessing on all olympics to see which one are close in order to cut useless calculation later.
+        #in meters/minutes equivalent to 4.5km/h
+        walking_speed = 75 
+
+        #could preprocess on all olympics to see which one are close in order to cut useless calculation later.
         #for o in olympics:
 
 
@@ -106,6 +117,15 @@ class Graph:
             latitudemed / len(self.vertices),
             longitudemed / len(self.vertices)
         )
+
+        
+        ### TO BE DONE 
+
+        ### ----------------------------------------------------------------------------------------------
+        ###
+        ### THE WALKING NETWORK (of dist: minutes_de_marches * 75) HAS TO BE DONE FOR ALL OLYMPIC SITE 
+        ###
+        ### ----------------------------------------------------------------------------------------------
 
         # Retrieve a walking network from OpenStreetMap for the area around the center point
         G = ox.graph_from_point(graph_center, dist=distance_threshold, network_type='walk')
@@ -132,6 +152,10 @@ class Graph:
                             edge = Edge(sta, olymp, walking_time)  # Create the edge with walking time as the weight
                             self.edges.append(edge)
                             self.cached_edges.append(edge)
+                            sta.addadja(olymp)
+                            olymp.addadja(sta)
+            
+        
 
         return True
     
@@ -221,30 +245,45 @@ class Graph:
                 
                 if v.getSolution():
                     color = 'green'
-                    print("m colored green")
+                    v.set_color(color)
+                
                 else:
                     color = 'blue'
-                
+                    v.set_color(color)
+                    
             else:
                 color = 'red'
+                v.set_color(color)
+                
             
-            v.set_color(color)
+            #  color in('red', 'green', 'blue')
             
-            if(color in('red', 'green')): # verify that the vertex is an olympic site or a station to modify
+            if(isinstance(v, Olympic)): # verify that the vertex is an olympic site or a station to modify
                 folium.Marker(
                     location=[v.geopoint.latitude, v.geopoint.longitude],
                     popup=v.name,
                     icon=folium.Icon(color=color)
                 ).add_to(folium_map)
+            elif(isinstance(v, Station)):
+                if(v.getSolution()):
+
+                    folium.Marker(
+                        location=[v.geopoint.latitude, v.geopoint.longitude],
+                        popup=v.name,
+                        icon=folium.Icon(color=color)
+                    ).add_to(folium_map)
+
 
         # Plot edges as lines with walking time
         for edge in tqdm(self.cached_edges, desc="Drawing edges"):
-            
-            if(edge.vertex1.get_color() in('red', 'blue') and edge.vertex2.get_color() in('red', 'blue')): #verify if the edge connect an olympic site to a station to modify
+
+            # what to put in the if() in order to print all stations: (edge.vertex1.get_color() in('red', 'blue') and edge.vertex2.get_color() in('red', 'blue')) or (edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green'))
+            # what to put in the if() in order to print only solution stations: (edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green'))
+            if((edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green'))): #verify if the edge connect an olympic site to a station to modify
                 total_seconds = round(edge.weight * 60)  # Convert minutes to total seconds
                 minutes = total_seconds // 60
                 seconds = total_seconds % 60
-                print(f"Drawing edge between {edge.vertex1.name} and {edge.vertex2.name} with color {edge.vertex1.get_color()}")
+                #print(f"Drawing edge between {edge.vertex1.name} and {edge.vertex2.name} with color {edge.vertex1.get_color()}")
                 folium.PolyLine(
                     locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
                             (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
@@ -260,3 +299,59 @@ class Graph:
     def set_distance_threshold(self, distance_threshold: float):
         """Set distance threshold and calculate edges based on it."""
         self.usefull_edges(distance_threshold)
+    
+    def set_restriction_minutes(self,minutes_de_marches):
+
+        self.usefull_edges_time(minutes_de_marches)
+    
+    def makeprofile(self, station: Station):
+        olympics = self.getOlympics()
+        profile_index = 0
+        copy = zeros(len(olympics))
+
+        for olymp in olympics:
+            if station.isadja(olymp):
+                copy[profile_index]=1
+            profile_index +=1
+        station.setprofile(copy)
+    
+    def makeprofiles(self):
+        stations = self.getStations()
+        for stat in stations:
+            self.makeprofile(stat)
+
+    def usefull_edges_time(self, minutes_de_marches):
+        
+        olympics = self.getOlympics()
+        stations = self.getStations()
+
+        #in meters/minutes equivalent to 4.5km/h
+        walking_speed = 75 
+
+        distance_autour_site = walking_speed * minutes_de_marches
+
+        #could preprocess on all olympics to see which one are close in order to cut useless calculation later.
+        #for o in olympics:
+
+        for sta in tqdm(stations,desc = "calculating usefull edges"):
+            
+            for olymp in olympics:
+
+                distance = geodesic(
+                                (sta.geopoint.latitude, sta.geopoint.longitude),
+                                (olymp.geopoint.latitude, olymp.geopoint.longitude)
+                            ).meters
+                
+                if distance <= distance_autour_site:
+
+                    walking_time = distance / walking_speed
+                    # Create the edge with walking time as the weight
+                    edge = Edge(sta, olymp, walking_time)  
+                    self.edges.append(edge)
+                    self.cached_edges.append(edge)
+                    sta.addadja(olymp)
+                    olymp.addadja(sta)
+                
+        return True
+
+
