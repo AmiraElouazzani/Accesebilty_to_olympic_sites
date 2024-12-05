@@ -51,11 +51,22 @@ S = station_parser()
 
 V = S + O
 
-#IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
-
 G = Graph.Graph(V, O, S, [], name="test_graph")
+#IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
+while True:
+    try:
+        print("Walking distance can be time consuming, avoid putting big values")
+        x = float(input("Walking time: "))
+        if x <= 0: 
+            print("Please enter a positive walking time")
+        elif x > 20:
+            print("Please enter a smaller walking time")
+        else :
+            break 
+    except ValueError:
+        print("Please enter a valid time")
 #G.set_distance_threshold(2000)
-G.set_restriction_minutes(10)
+G.set_restriction_minutes(x)
 
 #  #IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
 
