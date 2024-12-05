@@ -93,7 +93,7 @@ start_time = time.time()
 
 solution = Progress.solve(G)
 
-#solution = Progress.kaizen(G)
+#solution = Progress.Progress(G)
 
 end_time = time.time()
 elapsed_time = end_time - start_time

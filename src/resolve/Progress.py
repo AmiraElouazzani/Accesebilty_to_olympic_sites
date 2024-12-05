@@ -17,7 +17,7 @@ class Progress:
                 print("No solution found")
                 return False
 
-        #profiles = Progress.make_profiles(G, False)
+    
         G.makeprofiles()
         profiles = Progress.getprofiles(G)
         sorted_profiles = Progress.sort_profile(profiles)
@@ -31,7 +31,7 @@ class Progress:
 
     #progressive way, The graph doesn't contain "bad" olympic site
     @staticmethod
-    def kaizen(G:Graph):
+    def Progress(G:Graph):
 
         all_olympics = G.getOlympics()
         olympics_notused = []
@@ -64,12 +64,10 @@ class Progress:
                     compteurtaille +=1
 
                 
-                # for p in profiles_complets:
-                #     print(p[0])
+               
                 full_stationtomodify = Progress.search_union(profiles_complets)
                 
                 if full_stationtomodify != False:
-                    #print("taille solution",len(full_stationtomodify), "taille profiles", len(profiles_complets))
 
                     for s in full_stationtomodify:
                         s.belongSolution()
@@ -83,10 +81,9 @@ class Progress:
 
             if not olympics_notused: #check if this list is empty, if it's the case at this point it means there is no solution
                 return False
-            #print("olympic not used", olympics_notused)
+            
             olympic_to_remove = []
             for o in olympics_notused:
-                #if(len(profiles_complets)>20):
                     
                 cpt_dominance = 0
 
@@ -97,7 +94,7 @@ class Progress:
                         cpt_dominance +=1
                     
                 if cpt_dominance != len(station_to_modify):
-                        #print("ajout d'un site dominé pour éviter un décalage")
+                        
                         G.addprogressOlympics(o)
                         olympic_to_remove.append(o)
                     
@@ -113,74 +110,6 @@ class Progress:
 
         return False    
                 
-    #returns an array of bitarray
-    @staticmethod
-    def make_profiles(G:Graph, kaizen: bool):
-        olympics = G.getOlympics()
-        profiles = []
-        profile_index = 0
-        station_set = set()
-        invalides = 0
-
-        for o in olympics:
-            profile0 = zeros(len(olympics))
-            okprofile = 0
-            adja = o.getadja()
-
-            for sta in adja:
-
-                if sta.getname() == 'Invalides':
-                    print("Invalides adja" + " " + o.__str__())
-                    invalides = sta
-
-                station_set.add(sta)
-
-                if sta.getprofile() == 'e':
-
-                    sta.setprofile(profile0)
-
-                if sta.getname() == 'Invalides':
-
-                    print("avant")
-                    print(sta.getprofile())
-
-                if profile_index == 15:
-                    print(sta.__str__())
-                    print(sta.getprofile())
-                    print("15 avant")
-                    print(invalides.getprofile())
-
-                sta.changeprofile(profile_index, 1 )
-
-                if profile_index == 15:
-
-                    print(sta.getprofile())
-                    print("15 après")
-                    print(invalides.getprofile())
-
-
-                if sta.getname() == 'Invalides':
-                    
-                    print("après")
-                    print(sta.getprofile())
-
-            profile_index+=1
-
-            if invalides !=0:
-                print("test invalide" , profile_index)
-                print(invalides.getprofile())
-        
-        for sta in station_set:
-            profile = sta.getprofile()
-            if sta.getname() == 'Invalides':
-
-                print("dernier moment")
-                print(profile)
-            profiles.append((profile,sta))
-        
-        return profiles
-
-        
     
     #returns a bitarray
     @staticmethod
@@ -191,23 +120,17 @@ class Progress:
         else:
             olympics = G.getOlympics()
 
-        stationdict ={}
         stationlist=[]
         profile_index = 0
-        #print(len(olympics))
-
-        #for o in tqdm(olympics,desc="compute profiles"):
+      
         for o in olympics:
             
-            profile0 = bitarray(len(olympics))    #problème est ici les premiers créé sont de longueur 1 et donc on ne peut pas accéder plus loin, il faut remplir de 0
+            profile0 = bitarray(len(olympics))    
             profile0.setall(0)
             liste_adja = o.getadja()
 
             for sta in liste_adja:
 
-                # if sta.getprofile() == 'e':
-
-                #     sta.setprofile(profile0)
                 
                 okprofile = sta.getprofile()
 
@@ -219,15 +142,13 @@ class Progress:
 
                 sta.setprofile(okprofile)    
 
-                #profile = sta.getprofile()
-                #station_name = sta.getname()
-                #stationdict[station_name] = profile
+              
                 stationlist.append(sta)
 
             profile_index +=1
 
         actualprofiles = []
-        #print("taille du dctionnaire de stations",len(stationdict))
+        
         for i in stationlist:
             
             actualprofiles.append((i.getprofile(),i))
@@ -267,7 +188,7 @@ class Progress:
     def eliminate_weak(Sorted_profiles):
         prime_profile = []
 
-        for sorted_p in tqdm(Sorted_profiles[::-1],desc="eliminating weak profiles"):
+        for sorted_p in Sorted_profiles[::-1]:
             
             compteur_prime = 0
             
@@ -301,7 +222,7 @@ class Progress:
         taille_profile = len(prime_profiles[0][0])
 
         #print("taille du profil search union",taille_profile, "nombre de stations", len(prime_profiles))
-        for i in tqdm(range(1,taille_profile+1),desc="searching union"):
+        for i in range(1,taille_profile+1):
         
             comb_prime = combinations(prime_profiles, i )
             
