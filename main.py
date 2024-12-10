@@ -2,140 +2,64 @@ from src.parser.olympic_parser import olympic_parser
 from src.parser.station_parser import station_parser
 from src.resolve.BruteForce import BruteForce
 from src.resolve.Progress import Progress
-from src.Olympic import Olympic
-from src.Station import Station
-from src.Graph import Graph
 from src.resolve.BandB import ensemble_dominant, draw_minimum_dominating_set
-import pickle
-import time
+from utils import *
 
-from src import Graph
-from src import Edge
+def main():
+    O = olympic_parser()
+    S = station_parser()
+    V = S + O
 
-O = olympic_parser()
-S = station_parser()
+    x = get_walking_time()
+    G = load_graph(x, filename="processed_graph.pkl")
 
-#restriction are made for testing purposes
-
-# olympic_restriction = {"Stade Tour Eiffel",
-#                        "Pont d'Iéna",
-#                        "Arena Champs de Mars",
-#                        "Invalides"}
-
-# station_restriction = {"Champs de Mars",
-#                        "Bir Hakeim",
-#                        "École Militaire",
-#                        "Dupleix",
-#                        "Invalides"}
-
-# O = [o for o in O if o.name in olympic_restriction]
-# S = [s for s in S if s.name in station_restriction]
-
-# olympic_restriction = {"Stade Tour Eiffel",
-#                        "Pont d'Iéna", "Terrain des Essences - La Courneuve","Village des médias",
-#                        "Arena Champs de Mars", "Stade Pierre de Coubertin","Parc des Princes",
-#                        "Invalides","Hôtel de ville de Paris",
-#                        "Grand Palais","Stade de la Concorde",
-#                        "Invalides","Arena Paris Sud 4 (Porte de Versailles)",
-#                        "Arena Paris Sud 6 (Porte de Versailles)","Arena Paris Sud 1 (Porte de Versailles)"}
-
-# station_restriction = {"Champs de Mars","Stains La Cerisaie",
-#                        "Bir Hakeim","Dugny - La Courneuve",
-#                        "École Militaire","Exelmans","Issy-Val-de-Seine","Porte de Saint-Cloud",
-#                        "Dupleix", "Corentin Celton","Georges Brassens","Henri Farman",
-#                        "Invalides","Châtelet","Pont Neuf","Porte de Versailles"}
-
-# O = [o for o in O if o.name in olympic_restriction]
-# S = [s for s in S if s.name in station_restriction]
+    if not G:
+        G = load_or_create_graph(V, O, S)
+        G.usefull_edges_time(x)
+        save_graph(G, x)  # Save graph with the current x
 
 
-V = S + O
+    # Analyze "good" and "bad" Olympic sites
+    intermediaire = G.goodOlympics()
+    nbr_good_olymp = intermediaire[0]
+    bad_olymp = intermediaire[1]
 
-G = Graph.Graph(V, O, S, [], name="test_graph")
-#IMPORTANT lines to un-comment in order to calcultae the graph the first time IMPORTANT
-while True:
-    try:
-        print("Walking distance can be time consuming, avoid putting big values")
-        x = float(input("Walking time: "))
-        if x <= 0: 
-            print("Please enter a positive walking time")
-        elif x > 20:
-            print("Please enter a smaller walking time")
-        else :
-            break 
-    except ValueError:
-        print("Please enter a valid time")
-#G.set_distance_threshold(2000)
-G.set_restriction_minutes(x)
+    print(f"Number of good Olympic sites: {nbr_good_olymp}")
+    if bad_olymp:
+        print("Details of bad Olympic sites:")
+        for i in bad_olymp:
+            print(i.__str__())
 
-#  #IMPORTANT lines to un-comment in order to create the pickle of the graph the first time(create one per different graph) IMPORTANT
+    method = choose_method()
+    solution = None
+    if method == '1':
+        print("Running Brute Force...")
+        solution = BruteForce.solve(G)
+        G.draw()
+    elif method == '2':
+        print("Running Progress...")
+        solution = Progress.solve(G)
+        G.draw()
+        if not solution:
+            print("No solution found or an error occurred.")
+        else:
+            print(f"Solution size: {len(solution)}")
+            for i in solution:
+                print(i.getname())
 
-with open('fullgraph.pickle', 'wb') as file:
-    pickle.dump(G, file)
+    if method == '3':
+        print("Running Branch and Bound...")
+        solution = ensemble_dominant(G, set(), k=32)
 
-# IMPORTANT lines to comment if the pickle object of the graph is not created yet IMPORTANT
-# with open('graph.pickle', 'rb') as file:
-#     G: Graph = pickle.load(file)
+        if not solution:
+            print("No valid solution found by Branch and Bound.")
+        else:
+            print(f"Solution size: {len(solution)}")
+            print(f"Solution stations: {[station.name for station in solution]}")
+            draw_minimum_dominating_set(G, solution)
 
+    print("Graph has been drawn and saved to 'map.html'.")
+    clear_osmnx_cache()
 
-intermediaire = G.goodOlympics()
-
-nbr_good_olymp = intermediaire[0]
-bad_olymp = intermediaire[1]
-
-print("nbr bon site olympique: ", nbr_good_olymp)
-for i in G.getOlympics():
-    print(i.__str__())
-
-start_time = time.time()
-
-#brute_force_solution = BruteForce.solve(G)
-
-solution = Progress.solve(G)
-
-#solution = Progress.Progress(G)
-
-end_time = time.time()
-elapsed_time = end_time - start_time
-
-if not solution:
-    print("pas de solution ou erreur")
-        # uncomment to print station belonging to solution
-        # print(s.__str__())
-        # print(len(solution))
-
-print("solution obtenue en ", elapsed_time, " secondes")
-print("solution de taille: " + len(solution).__str__())
-for i in solution:
-    print(i.getname())
-   
-    
-# for i in solution:
-#     adja = i.getadja()
-#     for j in adja:
-#         if isinstance(j, Olympic) and isinstance(i, Station):
-#             namei = i.getname()
-#             namej= j.getname()
-#             print(namei + " 1 " + namej)
-
-
-G.draw()
-
-#Branch and Bound
-
-# Example usage
-# solution = ensemble_dominant(G,set(), k=32)
-# if solution is not None:
-#     print(f"Found solution with {len(solution)} stations")
-#     # These stations form a minimum dominating set
-#     for station in solution:
-#         print(f"Selected station: {station.name}")
-
-#     # Visualize if needed
-#     draw_minimum_dominating_set(G, solution)
-# else:
-#     print("No solution found")
-
-
-
-#print("solution de taille: ", len(progress_solution))
+if __name__ == "__main__":
+    main()

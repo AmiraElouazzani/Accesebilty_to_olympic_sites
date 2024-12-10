@@ -9,7 +9,9 @@ import networkx as nx
 from geopy.distance import geodesic
 from bitarray import bitarray
 from bitarray.util import ba2int, subset, zeros
-
+ox.settings.timeout = 180  
+ox.settings.overpass_rate_limit = True
+ox.settings.overpass_endpoint = "https://overpass.kumi.systems/api/interpreter"
 class Graph:
     def __init__(self, vertices: list[Vertex], olympics: list[Olympic], stations: list[Station], edges: list[Edge] = [], name="default_name"):
         self.vertices = vertices
@@ -94,121 +96,55 @@ class Graph:
     def addprogressOlympics(self, newOlympics):
         self.progressOlympics.append(newOlympics)
     
-    # fonctione pas tout a fait
-    def usefull_edges(self, distance_threshold):
-        
+    def usefull_edges_time(self, minutes_de_marches):
+        """
+        Calculate edges between stations and Olympic sites based on a double threshold:
+        1. Geodesic distance filter.
+        2. Walking distance using `osmnx`.
+        """
+        walking_speed = 75  # Meters per minute
+        geodesic_threshold = walking_speed * minutes_de_marches  # Max geodesic distance in meters
+
         olympics = self.getOlympics()
         stations = self.getStations()
+        for olymp in tqdm(olympics, desc="Processing Olympic sites"):
+            # Create a walking network graph for each Olympic site
+            G = ox.graph_from_point(
+                (olymp.geopoint.latitude, olymp.geopoint.longitude),
+                dist=geodesic_threshold,
+                network_type='walk'
+            )
 
-        #in meters/minutes equivalent to 4.5km/h
-        walking_speed = 75 
+            for station in stations:
+                # Step 1: Geodesic distance filter
+                geodesic_distance = geodesic(
+                    (station.geopoint.latitude, station.geopoint.longitude),
+                    (olymp.geopoint.latitude, olymp.geopoint.longitude)
+                ).meters
 
-        #could preprocess on all olympics to see which one are close in order to cut useless calculation later.
-        #for o in olympics:
+                if geodesic_distance > geodesic_threshold:
+                    continue  # Skip if outside the geodesic threshold
 
-
-        latitudemed = 0
-        longitudemed = 0
-
-        for v in tqdm(self.vertices, desc = "calculting graph center"):
-            latitudemed += v.geopoint.latitude
-            longitudemed+= v.geopoint.longitude
-        
-        graph_center = (
-            latitudemed / len(self.vertices),
-            longitudemed / len(self.vertices)
-        )
-
-        
-        ### TO BE DONE 
-
-        ### ----------------------------------------------------------------------------------------------
-        ###
-        ### THE WALKING NETWORK (of dist: minutes_de_marches * 75) HAS TO BE DONE FOR ALL OLYMPIC SITE 
-        ###
-        ### ----------------------------------------------------------------------------------------------
-
-        # Retrieve a walking network from OpenStreetMap for the area around the center point
-
-
-        G = ox.graph_from_point(graph_center, dist=distance_threshold, network_type='walk')
-
-        for sta in tqdm(stations,desc = "calculating usefull edges"):
-            
-            for olymp in olympics:
-
-
-                distance = geodesic(
-                                (sta.geopoint.latitude, sta.geopoint.longitude),
-                                (olymp.geopoint.latitude, olymp.geopoint.longitude)
-                            ).meters
-                
-                if distance <= distance_threshold:
-
-                    origin_node = ox.distance.nearest_nodes(G, sta.geopoint.longitude, sta.geopoint.latitude)
+                try:
+                    # Step 2: Walking distance filter using `osmnx`
+                    origin_node = ox.distance.nearest_nodes(G, station.geopoint.longitude, station.geopoint.latitude)
                     destination_node = ox.distance.nearest_nodes(G, olymp.geopoint.longitude, olymp.geopoint.latitude)
                     walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
 
-                    if walking_distance <= distance_threshold:
-                        # Calculate walking time in minutes
+                    if walking_distance <= geodesic_threshold:
+                        # Calculate walking time and create edge
                         walking_time = walking_distance / walking_speed
-                        if walking_time > 0:  # Ensure valid walking time
-                            edge = Edge(sta, olymp, walking_time)  # Create the edge with walking time as the weight
-                            self.edges.append(edge)
-                            self.cached_edges.append(edge)
-                            sta.addadja(olymp)
-                            olymp.addadja(sta)
-            
-        
+                        edge = Edge(station, olymp, walking_time)
+                        self.edges.append(edge)
+                        self.cached_edges.append(edge) 
+                        station.addadja(olymp)
+                        olymp.addadja(station)
 
-        return True
-    
-    # calcule toutes les arettes entre toute les station et tout les sites olympiques ( on peut surement l'enlever)
+                except (nx.NetworkXNoPath, KeyError):
+                    # Skip if no valid walking path exists
+                    continue
 
-    def calculate_edges(self, distance_threshold: float):
-        """Calculate and cache edges between vertices based on walking paths."""
-        self.cached_edges = []  
-        existing_edges = set()  # Set to store edges to prevent duplicates
 
-        # Get the road network (walking) for the area
-        # This uses the coordinates of the vertices to get the network for the area
-        graph_center = (
-            sum(v.geopoint.latitude for v in self.vertices) / len(self.vertices),
-            sum(v.geopoint.longitude for v in self.vertices) / len(self.vertices)
-        )
-        
-        # Retrieve a walking network from OpenStreetMap for the area around the center point
-        G = ox.graph_from_point(graph_center, dist=distance_threshold, network_type='walk')
-
-        # tqdm for progress bar
-        for i, v1 in tqdm(enumerate(self.vertices), total=len(self.vertices), desc="Calculating edges"):
-            for j, v2 in enumerate(self.vertices):
-                if i != j and not (isinstance(v1, Olympic) and isinstance(v2, Olympic)): 
-                        # Find the nearest nodes in the OSM network for each vertex
-                        try:
-                            distance = geodesic(
-                                (v1.geopoint.latitude, v1.geopoint.longitude),
-                                (v2.geopoint.latitude, v2.geopoint.longitude)
-                            ).meters
-
-                            if distance <= distance_threshold:
-
-                                origin_node = ox.distance.nearest_nodes(G, v1.geopoint.longitude, v1.geopoint.latitude)
-                                destination_node = ox.distance.nearest_nodes(G, v2.geopoint.longitude, v2.geopoint.latitude)
-                                walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
-                            
-                                if walking_distance <= distance_threshold : 
-                                    walking_time = Edge.walking_time_from_distance(walking_distance)
-                                    edge_pair = (v1, v2)
-                                    reverse_edge_pair = (v2, v1)
-                                    if edge_pair not in existing_edges and reverse_edge_pair not in existing_edges: # Check if the edge or its reverse already exists
-                                        # Create the edge with walking time as the weight
-                                        edge = Edge(v1, v2, walking_time)
-                                        self.cached_edges.append(edge)
-                                        self.edges.append(edge)
-                                        existing_edges.add(edge_pair)  
-                        except Exception as e:
-                            print(f"Error calculating path between {v1.name} and {v2.name}: {e}")
 
 
     def verify_station_olympic_link(self):
@@ -300,9 +236,6 @@ class Graph:
         folium_map.save("map.html")  
         return folium_map 
 
-    def set_distance_threshold(self, distance_threshold: float):
-        """Set distance threshold and calculate edges based on it."""
-        self.usefull_edges(distance_threshold)
     
     def set_restriction_minutes(self,minutes_de_marches):
 
@@ -323,52 +256,3 @@ class Graph:
         stations = self.getStations()
         for stat in stations:
             self.makeprofile(stat)
-
-    def usefull_edges_time(self, minutes_de_marches):
-        
-        olympics = self.getOlympics()
-        stations = self.getStations()
-
-        #in meters/minutes equivalent to 4.5km/h
-        walking_speed = 75 
-
-        distance_autour_site = walking_speed * minutes_de_marches
-
-        #could preprocess on all olympics to see which one are close in order to cut useless calculation later.
-
-        # for o in tqdm(olympics, desc =" walking graph around olympics"):
-
-        #     G = ox.graph_from_point((o.geopoint.latitude, o.geopoint.longitude), dist=distance_autour_site, network_type='walk')
-        #     origin_node = ox.distance.nearest_nodes(G, sta.geopoint.longitude, sta.geopoint.latitude)
-        #     destination_node = ox.distance.nearest_nodes(G, olymp.geopoint.longitude, olymp.geopoint.latitude)
-        #     walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
-
-        for sta in tqdm(stations,desc = "calculating usefull edges"):
-            
-            for olymp in olympics:
-
-
-                walking_distance = geodesic(
-                                (sta.geopoint.latitude, sta.geopoint.longitude),
-                                (olymp.geopoint.latitude, olymp.geopoint.longitude)
-                            ).meters
-                
-                if walking_distance <= distance_autour_site:
-
-                    # origin_node = ox.distance.nearest_nodes(G, sta.geopoint.longitude, sta.geopoint.latitude)
-                    # destination_node = ox.distance.nearest_nodes(G, olymp.geopoint.longitude, olymp.geopoint.latitude)
-                    # walking_distance = nx.shortest_path_length(G, origin_node, destination_node, weight='length')
-
-                    if walking_distance <= distance_autour_site:
-
-                        walking_time = walking_distance / walking_speed
-                        # Create the edge with walking time as the weight
-                        edge = Edge(sta, olymp, walking_time)  
-                        self.edges.append(edge)
-                        self.cached_edges.append(edge)
-                        sta.addadja(olymp)
-                        olymp.addadja(sta)
-                
-        return True
-
-
