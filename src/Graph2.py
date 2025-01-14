@@ -8,40 +8,60 @@ import networkx as nx
 import folium
 from tqdm import tqdm
 import functools
+from bitarray.util import zeros
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 MPS = 1.25
 
 class Graph:  
-  def __init__(self, vertices: list[Vertex], max_distance=1000, name="default_name", threaded=False, saved=False, cached=False):
+  def __init__(self, vertices: list[Vertex], olympics: list[Olympic], stations: list[Station], edges: list[Edge] = [], name="default_name", threaded=False):
     self.vertices = vertices
-    self.olympics = self.getOlympics()
-    self.stations = self.getStations()
+    self.olympics = olympics
+    self.stations = stations
+    self.edges = edges
     self.cached_edges = []
-    self.max_distance = max_distance
+    self.max_distance = 1000
     self.threaded = threaded
-    self.saved = saved
     self.name = name
-    self.cached = cached
+    self.progressOlympics = []
     
   def getStations(self):
-    stations=[]
-    stations_name = []
-    for v in self.vertices:
-      # if isinstance(v, Station) and v.name not in stations_name:
-      if isinstance(v, Station):
-        stations.append(v)
-        stations_name.append(v.name)
-    return stations
+    if(not hasattr(self, "stations")):
+      self.stations = []
+      for v in self.vertices:
+        if isinstance(v, Station):
+          self.stations.append(v)
+    return self.stations
   
   def getOlympics(self):
-    olympics=[]
-    olympics_name = []
-    for v in self.vertices:
-      if isinstance(v, Olympic) and v.name not in olympics_name:        
-        olympics.append(v)
-        olympics_name.append(v.name)
-    return olympics
+    if(not hasattr(self, "olympics")):
+      self.olympics=[]
+      for v in self.vertices:
+        if isinstance(v, Olympic):        
+          self.olympics.append(v)
+    return self.olympics
+
+  def isSolutionOfAccessibility(self, A):
+    visited = set()
+    for a in A:
+      visited = visited.union(self.get_neighbors(a))
+    return (set(self.olympics).issubset(visited))
+  
+  def are_adjacent(self, v1 : Vertex, v2 : Vertex):
+    for e in self.edges:
+      if (e.vertex1 == v1 and e.vertex2 == v2) or (e.vertex1 == v2 and e.vertex2 == v1):
+        return True
+    return False
+
+  def get_neighbors(self, v : Vertex):
+    return v.getadja()
+  
+  def getprogressOlympics(self):
+    return self.progressOlympics
+
+  def addprogressOlympics(self, newOlympics):
+    self.progressOlympics.append(newOlympics)
+
   
   def haversine(self, lng1, lat1, lng2, lat2):
     """
@@ -71,19 +91,29 @@ class Graph:
     return distance
   
   def goodOlympics(self):
-    olympics = []
-    olympics_name = []
-    for e in self.cached_edges:
-      if isinstance(e.vertex1, Olympic) and e.vertex1.name not in olympics_name:
-        olympics.append(e.vertex1)
-        olympics_name.append(e.vertex1.name)
-    return olympics
+    good_olympics =[]
+    bad_olympics =[]
+    for olymp in self.getOlympics():
+      if self.has_neighbours_station(olymp):
+        good_olympics.append(olymp)
+      else:
+        bad_olympics.append(olymp)
+    self.changeOlympics(good_olympics)
+
+    return (len(good_olympics), bad_olympics)
   
-  def save(self, save):
-    self.saved = save
+  def changeOlympics(self, new_olympics):
+    self.olympics = new_olympics
   
-  def save(self):
-    return None
+  def has_neighbours_station(self,v: Vertex):
+    neighbors = v.getadja()
+
+    if neighbors != False:
+      for ver in neighbors:
+        if isinstance(ver, Station):
+          return True
+    
+    return False
   
   def set_distance_threshold(self, max_distance):
     self.max_distance = max_distance
@@ -93,6 +123,7 @@ class Graph:
   
   def set_restriction_minutes(self, minutes):
     self.max_distance = minutes * 60 * MPS
+    print("Max distance: ", self.max_distance)
   
   def set_restriction_seconds(self, seconds):
     self.max_distance = seconds * MPS
@@ -110,10 +141,10 @@ class Graph:
     if self.threaded:
       with ProcessPoolExecutor() as executor:
         future_to_olympic = {
-          executor.submit(self.calculate_olympic_site, o, graph): o for o in enumerate(self.olympics)
+          executor.submit(self.calculate_olympic_site, o, graph): o for o in self.getOlympics()
         }
 
-        for future in tqdm(as_completed(future_to_olympic), total=len(future_to_olympic)):
+        for future in as_completed(future_to_olympic):
           o = future_to_olympic[future]
           try:
             result = future.result()
@@ -121,25 +152,28 @@ class Graph:
           except Exception as e:
             print(f"Exception for {o}: {e}")
         self.cached_edges = edges
+        self.edges = self.edges + edges
     else:
-      for o in tqdm(enumerate(self.olympics), total=len(self.olympics)):
+      for o in tqdm(enumerate(self.getOlympics()), desc="Processing Olympic sites"):
         edges += self.calculate_olympic_site(o, graph)
       self.cached_edges = edges
+      self.edges = self.edges + edges
   
-  def calculate_each_olympic_graph(self):
+  def usefull_edges_time(self, minutes):
+    self.set_restriction_minutes(minutes)
     edges = []
     if(self.threaded):
       with ProcessPoolExecutor() as executor:
         future_to_olympic = {
           executor.submit(
             self.calculate_olympic_site, o, ox.graph_from_point(
-              (o[1].geopoint.latitude, o[1].geopoint.longitude),
+              (o.geopoint.latitude, o.geopoint.longitude),
               dist=self.get_distance_threshold(),
               network_type='walk')
-            ): o for o in enumerate(self.olympics)
+            ): o for o in tqdm(enumerate(self.getOlympics()), desc="Processing Olympic sites")
         }
 
-        for future in tqdm(as_completed(future_to_olympic), total=len(future_to_olympic)):
+        for future in as_completed(future_to_olympic):
           o = future_to_olympic[future]
           try:
             result = future.result()
@@ -147,49 +181,43 @@ class Graph:
           except Exception as e:
             print(f"Exception for {o}: {e}")
         self.cached_edges = edges
+        self.edges = self.edges + edges
     else:
-      for o in tqdm(enumerate(self.olympics), total=len(self.olympics)):
+      for o in tqdm(enumerate(self.getOlympics()), desc="Processing Olympic sites"):
         olympic = o[1].geopoint
         graph = ox.graph_from_point((olympic.latitude, olympic.longitude), dist=self.get_distance_threshold(), network_type='walk')
         edges += self.calculate_olympic_site(o, graph)
       self.cached_edges = edges
+      self.edges = self.edges + edges
     
   def calculate_olympic_site(self, o, graph):
-      # print("Station olympic: ", o[1].name)
       olympic = o[1].geopoint
-      selected_stations = []
-      selected_stations_ids = []
+      source_node = ox.distance.nearest_nodes(graph, olympic.longitude, olympic.latitude)
+      distances, paths = nx.single_source_dijkstra(graph, source_node, weight="length")
+      edges = []
       
-      for s in tqdm(enumerate(self.stations), total=len(self.stations)):
-        station = s[1].geopoint
+      for s in self.getStations():
+        station = s.geopoint
         distance_harversine = self.haversine(olympic.longitude, olympic.latitude, station.longitude, station.latitude)
         # print('distance vol d"oiseau: ', distance_harversine)
         if distance_harversine <= self.get_distance_threshold():
           # print('distance vol d"oiseau inf max')
-          # print('Pré-selection de la station : ' + s.name, distance_harversine)
-          selected_stations.append(s)
-          selected_stations_ids.append(ox.distance.nearest_nodes(graph, station.longitude, station.latitude))
+          node = ox.distance.nearest_nodes(graph, station.longitude, station.latitude)
+          if node in distances and distances[node] <= self.get_distance_threshold():
+            walking_time = distances[node] / (MPS * 60)
+            # print('Création du lien avec la station : ', selected_stations[selected_stations_ids.index(node)].name, distances[node])
+            edge = Edge(s, o[1], walking_time)
+            edges.append(edge)
+            s.addadja(o[1])
+            o[1].addadja(s)
         
-      source_node = ox.distance.nearest_nodes(graph, olympic.longitude, olympic.latitude)
-      
-      distances, paths = nx.single_source_dijkstra(graph, source_node, weight="length")
-      
-      # target_distances = {node: distances[node] for node in selected_stations_ids if node in distances and distances[node] <= self.get_distance_threshold()}
-      # target_paths = {node: paths[node] for node in target_nodes if node in paths and distances[node] <= self.get_distance_threshold()}
-      edges = []
-      for node in selected_stations_ids:
-        if node in distances and distances[node] <= self.get_distance_threshold():
-          # print('Création du lien avec la station : ', selected_stations[selected_stations_ids.index(node)].name, distances[node])
-          s = selected_stations[selected_stations_ids.index(node)]
-          edge = Edge(o[1], s[1], distances[node])
-          edges.append(edge)
       return edges
 
   def draw(self):
     """Draw the graph using Folium instead of Matplotlib, showing walking time (weight) on edges."""
     if not self.vertices:
-        print("No vertices to draw.")
-        return
+      print("No vertices to draw.")
+      return
 
     # Initialize a folium map centered at the average point of the vertices
     lats = [v.geopoint.latitude for v in self.vertices]
@@ -198,42 +226,68 @@ class Graph:
 
     # Create a folium map
     folium_map = folium.Map(location=center_point, zoom_start=13)
-        
-    for v in self.stations:
-        color = 'blue'
-        folium.Marker(
-            location=[v.geopoint.latitude, v.geopoint.longitude],
-            popup=v.name,
-            icon=folium.Icon(color=color)
-        ).add_to(folium_map)
 
-    for v in self.olympics:
+    # Plot vertices as markers on the map
+    for v in self.vertices:
+      if isinstance(v, Station):
+        if v.getSolution():
+            color = 'green'
+            v.set_color(color)
+        else:
+            color = 'blue'
+            v.set_color(color)
+      else:
         color = 'red'
+        v.set_color(color)
+      
+      #  color in('red', 'green', 'blue')
+      
+      if(isinstance(v, Olympic)): # verify that the vertex is an olympic site or a station to modify
         folium.Marker(
             location=[v.geopoint.latitude, v.geopoint.longitude],
             popup=v.name,
             icon=folium.Icon(color=color)
         ).add_to(folium_map)
+      elif(isinstance(v, Station)):
+        if(v.getSolution()):
+          folium.Marker(
+            location=[v.geopoint.latitude, v.geopoint.longitude],
+            popup=v.name,
+            icon=folium.Icon(color=color)
+          ).add_to(folium_map)
 
-    # Plot edges as lines with walking time
     for edge in tqdm(self.cached_edges, desc="Drawing edges"):
-        # print('edge: ', edge)
-        # convert edge.weight to minutes / seconds
-        distance = edge.weight
-        time = distance / MPS
-        minutes = int(time // 60)
-        seconds = int(time % 60)
-        folium.PolyLine(
-            locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
-                    (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
-            color="black",
-            weight=2,
-            opacity=1,
-            tooltip=f"Walking time: {minutes}m {seconds}s"  # Display walking time as tooltip
-        ).add_to(folium_map)
+      if((edge.vertex1.get_color() in('red', 'green') and edge.vertex2.get_color() in('red', 'green'))): #verify if the edge connect an olympic site to a station to modify
+        total_seconds = round(edge.weight * 60)  # Convert minutes to total seconds
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
 
-    folium_map.save("map2.html")  
+        folium.PolyLine(
+          locations=[(edge.vertex1.geopoint.latitude, edge.vertex1.geopoint.longitude),
+                  (edge.vertex2.geopoint.latitude, edge.vertex2.geopoint.longitude)],
+          color="black",
+          weight=2,
+          opacity=1,
+          tooltip=f"Walking time: {minutes} mins {seconds} secs").add_to(folium_map)
+    folium_map.save("map.html")  
     return folium_map 
+  
+  def makeprofile(self, station: Station):
+    olympics = self.getOlympics()
+    profile_index = 0
+    copy = zeros(len(olympics))
+
+    for olymp in olympics:
+        if station.isadja(olymp):
+            copy[profile_index]=1
+        profile_index +=1
+    station.setprofile(copy)
+
+  def makeprofiles(self):
+    stations = self.getStations()
+    for stat in stations:
+        self.makeprofile(stat)
+
 
 # one line copy graph.nodes into nodes_ids
 # max_distance = 1500
