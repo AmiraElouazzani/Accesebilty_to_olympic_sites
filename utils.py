@@ -1,6 +1,6 @@
 import os
 import pickle
-from src.Graph import Graph
+from src.Graph2 import Graph
 
 
 def get_walking_time():
