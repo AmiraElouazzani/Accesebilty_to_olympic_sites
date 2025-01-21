@@ -16,7 +16,6 @@ class Site(Vertex):
         return f"Site: {self.name}, {self.geopoint}"
     
     def getname(self):
-
         return self.name
     
 

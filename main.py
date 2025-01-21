@@ -47,6 +47,8 @@ def main():
             for i in solution:
                 print(i.getname())
 
+
+
     if method == '3':
         print("Running Branch and Bound...")
         solution = ensemble_dominant(G, set(), k=32)

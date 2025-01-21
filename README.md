@@ -46,3 +46,7 @@ python3 -m path.to.my.file
 ```
 
 (no .py extension), don't forget the dots for relative imports.
+
+# Benchmarks
+
+Some Benchmarks are implemented in ```src/Benchmark.py```, but some bugs remain.

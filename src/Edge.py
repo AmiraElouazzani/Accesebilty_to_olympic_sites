@@ -12,5 +12,8 @@ class Edge:
         walking_speed_mpm = (walking_speed_kmph * 1000) / 60.0  # meters per minute
         return distance_meters / walking_speed_mpm
     
+    def isIncident(self, v: Vertex) -> bool:
+        return self.vertex1 == v or self.vertex2 == v
+    
     def __str__(self):
         return f"Edge: {self.vertex1} -> {self.vertex2} ({self.weight})"

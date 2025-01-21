@@ -6,6 +6,7 @@ import math
 import osmnx as ox
 import networkx as nx
 import folium
+import random
 from tqdm import tqdm
 import functools
 from bitarray.util import zeros
@@ -90,6 +91,8 @@ class Graph:
     distance = R * c
     return distance
   
+  #remove olympic sites from the graph that are not connected to any station
+  #it means we will find a solution for the accessibility problem but not for these stations
   def goodOlympics(self):
     good_olympics =[]
     bad_olympics =[]
@@ -287,6 +290,32 @@ class Graph:
     stations = self.getStations()
     for stat in stations:
         self.makeprofile(stat)
+
+  def random_peel(self, n):
+
+    if len(self.stations)==0:
+      print("You peeled all the stations !")
+    elif len(self.olympics)==0:
+      print("You peeled all the olympic sites !")
+
+    V = self.vertices
+    removed = []
+    for i in range(n):
+      random_vertex = random.choice(V)
+      removed.append(random_vertex)
+      V.remove(random_vertex)
+
+      if random_vertex in self.olympics:
+        self.olympics.remove(random_vertex)
+      if random_vertex in self.stations:
+        self.stations.remove(random_vertex)
+
+    for v in removed:
+      for edge in self.edges:
+        if edge.isIncident(v):
+          self.edges.remove(edge)
+
+    self.goodOlympics()
 
 
 # one line copy graph.nodes into nodes_ids
